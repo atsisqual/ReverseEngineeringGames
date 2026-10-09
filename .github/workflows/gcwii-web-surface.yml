@@ -24,13 +24,15 @@ jobs:
           git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
           "$RUNNER_TEMP/emsdk/emsdk" install 6.0.12
           "$RUNNER_TEMP/emsdk/emsdk" activate 6.0.12
-      - name: Compile browser WebGPU surface probe
+      - name: Compile browser WebGPU probes
         shell: bash
         run: |
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           emcmake cmake -S labs/gcwii-web-surface -B build/gcwii-web-surface -G Ninja
           cmake --build build/gcwii-web-surface
-          test -s build/gcwii-web-surface/reg_gcwii_web_surface.html
-          test -s build/gcwii-web-surface/reg_gcwii_web_surface.js
-          test -s build/gcwii-web-surface/reg_gcwii_web_surface.wasm
-          grep -q 'id="canvas"' build/gcwii-web-surface/reg_gcwii_web_surface.html
+          for target in reg_gcwii_web_surface reg_gcwii_web_device; do
+            test -s "build/gcwii-web-surface/${target}.html"
+            test -s "build/gcwii-web-surface/${target}.js"
+            test -s "build/gcwii-web-surface/${target}.wasm"
+            grep -q 'id="canvas"' "build/gcwii-web-surface/${target}.html"
+          done
