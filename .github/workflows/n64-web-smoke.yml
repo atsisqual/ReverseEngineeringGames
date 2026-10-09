@@ -22,7 +22,7 @@ jobs:
       - name: Run native smoke target
         run: ./build/n64-native/reg_n64_web_smoke
       - name: Check lab layout
-        run: python -m pytest -q labs/n64-web/tests
+        run: python -m unittest discover -s labs/n64-web/tests -p 'test_*.py' -v
 
   wasm:
     runs-on: ubuntu-latest
