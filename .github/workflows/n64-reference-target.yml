@@ -1,0 +1,43 @@
+name: n64-reference-target
+
+on:
+  push:
+    paths:
+      - 'tools/n64_web_audit.py'
+      - 'targets/ogre-battle-64/**'
+      - 'tests/test_n64_web_audit.py'
+      - 'tests/test_ogre_target.py'
+      - '.github/workflows/n64-reference-target.yml'
+  pull_request:
+    paths:
+      - 'tools/n64_web_audit.py'
+      - 'targets/ogre-battle-64/**'
+      - 'tests/test_n64_web_audit.py'
+      - 'tests/test_ogre_target.py'
+      - '.github/workflows/n64-reference-target.yml'
+
+jobs:
+  local-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: python -m unittest -v tests/test_n64_web_audit.py tests/test_ogre_target.py
+      - name: Dry-run reference clone
+        run: python targets/ogre-battle-64/prepare.py --dry-run --workspace /tmp/ogre-reference clone
+
+  upstream-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned public reference
+        shell: bash
+        run: |
+          set -eux
+          mkdir -p /tmp/ogre-reference
+          git -C /tmp/ogre-reference init
+          git -C /tmp/ogre-reference remote add origin https://github.com/lfarroco/ogre-battle-64-recomp.git
+          git -C /tmp/ogre-reference fetch --depth 1 origin cfd3db412700e76eca14a0a662219a6bdd7c77e4
+          git -C /tmp/ogre-reference checkout --detach FETCH_HEAD
+      - name: Audit browser-port evidence
+        run: python tools/n64_web_audit.py /tmp/ogre-reference --strict

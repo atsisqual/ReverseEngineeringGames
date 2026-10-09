@@ -1,0 +1,27 @@
+{
+  "id": "ogre-battle-64",
+  "name": "Ogre Battle 64: Person of Lordly Caliber",
+  "platform": "n64",
+  "route": "static-recompilation",
+  "upstream": {
+    "repo": "https://github.com/lfarroco/ogre-battle-64-recomp.git",
+    "commit": "cfd3db412700e76eca14a0a662219a6bdd7c77e4"
+  },
+  "runtime": {
+    "repo": "https://github.com/N64Recomp/N64ModernRuntime.git",
+    "commit": "589bbf018a3e6d3646ddf7de1e7919f1b7e99bb1",
+    "n64recomp_commit": "81213c1831fab2521a6a5459c67b63437d67e253"
+  },
+  "input": {
+    "description": "User-owned Ogre Battle 64 USA Rev A big-endian .z64 dump",
+    "expected_size_bytes": 41943040,
+    "expected_xxh3_64": "be6adaa5c3f8f7a9",
+    "staged_path": "assets/ogre64.z64"
+  },
+  "browser": {
+    "backend": "WebGL2 prototype",
+    "status": "boots in Chromium; input/audio/persistence implemented; title sprite layer renders; S2DEX2/parts of 3D remain incomplete",
+    "serve_path": "/app/web/index.html",
+    "default_port": 8931
+  }
+}
