@@ -30,7 +30,7 @@ jobs:
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           emcmake cmake -S labs/gcwii-web-surface -B build/gcwii-web-surface -G Ninja
           cmake --build build/gcwii-web-surface
-          for target in reg_gcwii_web_surface reg_gcwii_web_device; do
+          for target in reg_gcwii_web_surface reg_gcwii_web_device reg_gcwii_web_syncbridge; do
             test -s "build/gcwii-web-surface/${target}.html"
             test -s "build/gcwii-web-surface/${target}.js"
             test -s "build/gcwii-web-surface/${target}.wasm"

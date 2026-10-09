@@ -1,7 +1,7 @@
 {
   "id": "gcwii-browser-surface-spike",
   "platforms": ["gamecube", "wii"],
-  "status": "generic-browser-surface-and-async-device-bootstrap-proven-gxruntime-integration-pending",
+  "status": "browser-surface-async-bootstrap-and-sync-asyncify-bridge-proven-gxruntime-integration-pending",
   "gxruntime": {
     "repo": "https://github.com/aharonahdoot/GXRuntime.git",
     "commit": "8a47b0e8ea7dfc39014a4cff4f7895d88494a611"
@@ -13,12 +13,13 @@
     "canvas-webgpu-surface",
     "async-request-adapter",
     "async-request-device",
+    "sync-api-asyncify-bridge",
     "coop-coep-local-host"
   ],
   "next_gxruntime_changes": [
     "emscripten-dawn-provider",
     "browser-canvas-surface-descriptor",
     "guard-native-dawn-instance-setup",
-    "integrate-async-adapter-device-bootstrap"
+    "integrate-sync-webgpu-asyncify-bridge"
   ]
 }

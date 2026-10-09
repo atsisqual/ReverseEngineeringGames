@@ -25,3 +25,8 @@ endfunction()
 add_gcwii_webgpu_probe(reg_gcwii_web_surface main.cpp)
 add_gcwii_webgpu_probe(reg_gcwii_web_device device_bootstrap.cpp)
 target_link_options(reg_gcwii_web_device PRIVATE "-sNO_EXIT_RUNTIME=1")
+
+# Aurora's public initialize contract is synchronous today. This probe shows how
+# that contract can be retained on the web while still yielding to async WebGPU.
+add_gcwii_webgpu_probe(reg_gcwii_web_syncbridge sync_bridge.cpp)
+target_link_options(reg_gcwii_web_syncbridge PRIVATE "-sASYNCIFY=1")
