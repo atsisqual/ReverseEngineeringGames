@@ -52,4 +52,16 @@ jobs:
         shell: bash
         run: |
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
-          cmake --build "$RUNNER_TEMP/gxruntime-web" --target aurora_core -j2
+          LOG="$RUNNER_TEMP/aurora-core-build.log"
+          set +e
+          cmake --build "$RUNNER_TEMP/gxruntime-web" --target aurora_core -j2 >"$LOG" 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo '--- first compiler errors ---'
+            grep -n -m 20 -E '(^|: )(fatal )?error:|FAILED:' "$LOG" || true
+            echo '--- build tail ---'
+            tail -n 120 "$LOG"
+            exit "$status"
+          fi
+          tail -n 40 "$LOG"
