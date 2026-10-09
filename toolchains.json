@@ -1,12 +1,15 @@
 {
   "tools": [
-    {"id":"emsdk","name":"Emscripten SDK","groups":["web"],"repo":"https://github.com/emscripten-core/emsdk.git","purpose":"Clang/LLVM-based C/C++ to WebAssembly toolchain and browser runtime glue"},
+    {"id":"emsdk","name":"Emscripten SDK","groups":["web","n64-web"],"repo":"https://github.com/emscripten-core/emsdk.git","purpose":"Clang/LLVM-based C/C++ to WebAssembly toolchain and browser runtime glue"},
     {"id":"binaryen","name":"Binaryen","groups":["web"],"repo":"https://github.com/WebAssembly/binaryen.git","purpose":"WebAssembly optimizer/toolchain including wasm-opt"},
     {"id":"wabt","name":"WABT","groups":["web"],"repo":"https://github.com/WebAssembly/wabt.git","purpose":"WebAssembly inspection, validation and conversion tools"},
     {"id":"objdiff","name":"objdiff","groups":["analysis","n64","gcwii","ps"],"repo":"https://github.com/encounter/objdiff.git","purpose":"Object-file diffing and matching-decomp verification across many console architectures"},
     {"id":"decomp-toolkit","name":"decomp-toolkit","groups":["analysis","gcwii"],"repo":"https://github.com/encounter/decomp-toolkit.git","purpose":"GameCube/Wii disc, DOL, REL and matching-decomp analysis tooling"},
-    {"id":"n64recomp","name":"N64Recomp","groups":["n64"],"repo":"https://github.com/N64Recomp/N64Recomp.git","purpose":"Static MIPS/N64 binary recompiler that emits portable C"},
-    {"id":"n64-modern-runtime","name":"N64ModernRuntime","groups":["n64"],"repo":"https://github.com/N64Recomp/N64ModernRuntime.git","purpose":"Runtime foundation for N64 recompilations and traditional ports"},
+    {"id":"n64recomp","name":"N64Recomp","groups":["n64","n64-web"],"repo":"https://github.com/N64Recomp/N64Recomp.git","purpose":"Static MIPS/N64 binary recompiler that emits portable C"},
+    {"id":"n64-modern-runtime","name":"N64ModernRuntime","groups":["n64","n64-web"],"repo":"https://github.com/N64Recomp/N64ModernRuntime.git","purpose":"Runtime foundation for N64 recompilations and traditional ports; browser renderer integration is still project work"},
+    {"id":"recomp-frontend","name":"RecompFrontend","groups":["n64"],"repo":"https://github.com/N64Recomp/RecompFrontend.git","purpose":"Menus and input handling library used by N64: Recompiled projects"},
+    {"id":"n64wasm","name":"N64Wasm","groups":["n64-web","emulation","browser-reference"],"repo":"https://github.com/nbarkhina/N64Wasm.git","purpose":"Browser N64 emulator compiled to WebAssembly; practical fallback when a static recomp browser runtime is unavailable"},
+    {"id":"recomp-kit","name":"recomp-kit","groups":["pc","browser-reference"],"repo":"https://github.com/veritr1x/recomp-kit.git","purpose":"Current static-recomp browser reference for 32-bit x86 Windows games using Emscripten, WebGPU, pthreads and WasmFS; review upstream licensing before reusing code"},
     {"id":"dolrecomp","name":"DolRecomp","groups":["gcwii"],"repo":"https://github.com/ExpansionPak/DolRecomp.git","purpose":"Static PowerPC recompiler for GameCube/Wii (plus early Wii U support)"},
     {"id":"moderngekko","name":"ModernGekko","groups":["gcwii"],"repo":"https://github.com/ExpansionPak/ModernGekko.git","purpose":"GameCube/Wii recompilation runtime; useful reference even when a browser runtime needs separate adaptation"},
     {"id":"reccmp","name":"reccmp","groups":["analysis","pc"],"repo":"https://github.com/isledecomp/reccmp.git","purpose":"Matching-decomp verification, especially older 32-bit MSVC x86 projects"},
