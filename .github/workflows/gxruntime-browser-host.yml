@@ -34,9 +34,7 @@ jobs:
           grep -q 'EmscriptenSurfaceSourceCanvasHTMLSelector' "$RUNNER_TEMP/gxruntime/graphics/aurora/lib/dawn/BackendBinding.cpp"
           grep -q 'emscripten_sleep(0)' "$RUNNER_TEMP/gxruntime/graphics/aurora/lib/webgpu/gpu.cpp"
           grep -q 'emdawnwebgpu' "$RUNNER_TEMP/gxruntime/graphics/aurora/cmake/AuroraDawnProvider.cmake"
-          grep -q 'if (EMSCRIPTEN)' "$RUNNER_TEMP/gxruntime/graphics/aurora/extern/CMakeLists.txt"
-          grep -q 'if (NOT EMSCRIPTEN)' "$RUNNER_TEMP/gxruntime/graphics/aurora/extern/CMakeLists.txt"
-          grep -q '#ifndef __EMSCRIPTEN__' "$RUNNER_TEMP/gxruntime/graphics/aurora/lib/imgui.cpp"
+          grep -q 'Dear ImGui WebGPU Emscripten compatibility anchor not found' "$RUNNER_TEMP/gxruntime/graphics/aurora/extern/CMakeLists.txt"
       - name: Install pinned Emscripten SDK
         shell: bash
         run: |
@@ -53,6 +51,12 @@ jobs:
             -DGXRUNTIME_ENABLE_AURORA_RECOMP=OFF \
             -DAURORA_ENABLE_RMLUI=OFF \
             -DAURORA_SDL3_LINKAGE=static
+          IMGUI_WGPU="$RUNNER_TEMP/gxruntime-web/_deps/imgui-src/backends/imgui_impl_wgpu.cpp"
+          grep -q 'Exactly one of IMGUI_IMPL_WEBGPU_BACKEND_DAWN or IMGUI_IMPL_WEBGPU_BACKEND_WGPU must be defined' "$IMGUI_WGPU"
+          if grep -q 'neither IMGUI_IMPL_WEBGPU_BACKEND_DAWN nor IMGUI_IMPL_WEBGPU_BACKEND_WGPU may be defined if targeting emscripten' "$IMGUI_WGPU"; then
+            echo 'stale Dear ImGui Emscripten guard still present' >&2
+            exit 1
+          fi
       - name: Compile real Aurora core for Wasm
         shell: bash
         run: |
