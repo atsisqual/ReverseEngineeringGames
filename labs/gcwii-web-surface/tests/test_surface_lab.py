@@ -15,6 +15,15 @@ class SurfaceLabTests(unittest.TestCase):
         self.assertIn('selector = "#canvas"', cpp)
         self.assertIn('id="canvas"', shell)
 
+    def test_async_adapter_device_bootstrap_has_no_native_wait(self):
+        cpp = (ROOT / "device_bootstrap.cpp").read_text(encoding="utf-8")
+        self.assertIn("RequestAdapter", cpp)
+        self.assertIn("RequestDevice", cpp)
+        self.assertIn("CallbackMode::AllowSpontaneous", cpp)
+        self.assertIn("emscripten_set_main_loop", cpp)
+        self.assertNotIn("WaitAny", cpp)
+        self.assertNotIn("TimedWaitAny", cpp)
+
     def test_server_enables_cross_origin_isolation(self):
         server = (ROOT / "serve.py").read_text(encoding="utf-8")
         self.assertIn('Cross-Origin-Opener-Policy", "same-origin', server)
