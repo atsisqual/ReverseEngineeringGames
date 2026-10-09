@@ -1,0 +1,57 @@
+name: web-fallback-references
+
+on:
+  push:
+    paths:
+      - 'routes.json'
+      - 'portctl.py'
+      - 'toolchains.json'
+      - 'targets/web-fallbacks/**'
+      - 'tools/web_reference_audit.py'
+      - 'tests/test_routes.py'
+      - 'tests/test_web_reference_audit.py'
+      - '.github/workflows/web-fallback-references.yml'
+  pull_request:
+    paths:
+      - 'routes.json'
+      - 'portctl.py'
+      - 'toolchains.json'
+      - 'targets/web-fallbacks/**'
+      - 'tools/web_reference_audit.py'
+      - 'tests/test_routes.py'
+      - 'tests/test_web_reference_audit.py'
+      - '.github/workflows/web-fallback-references.yml'
+
+jobs:
+  local:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest -v tests/test_routes.py tests/test_web_reference_audit.py
+      - run: python portctl.py route ps2 --json
+      - run: python portctl.py route psx --json
+
+  references:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - id: ps2-play
+            repo: https://github.com/jpd002/Play-.git
+            commit: 83700b2c31e593bc94e845b4b31b797be84dda59
+          - id: retroarch-web
+            repo: https://github.com/libretro/RetroArch.git
+            commit: fce35fc72b264775867d6d1bac45df2998e0bc4c
+          - id: psp-ppsspp-web
+            repo: https://github.com/root-hunter/ppsspp-web.git
+            commit: 57121017f82f411f96ca0481dbd0c9d609e9cc0b
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned reference
+        run: |
+          git init /tmp/reference
+          git -C /tmp/reference remote add origin "${{ matrix.repo }}"
+          git -C /tmp/reference fetch --depth 1 origin "${{ matrix.commit }}"
+          git -C /tmp/reference checkout --detach FETCH_HEAD
+      - name: Verify browser evidence
+        run: python tools/web_reference_audit.py "${{ matrix.id }}" /tmp/reference

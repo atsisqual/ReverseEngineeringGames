@@ -1,0 +1,46 @@
+{
+  "targets": [
+    {
+      "id": "ps2-play",
+      "platform": "ps2",
+      "kind": "official",
+      "repo": "https://github.com/jpd002/Play-.git",
+      "commit": "83700b2c31e593bc94e845b4b31b797be84dda59",
+      "required_patterns": [
+        "web browser platforms",
+        "Building for Web Browsers",
+        "emcmake",
+        "Play.wasm",
+        "Browser environment caveats"
+      ]
+    },
+    {
+      "id": "retroarch-web",
+      "platform": "multi",
+      "kind": "official",
+      "repo": "https://github.com/libretro/RetroArch.git",
+      "commit": "fce35fc72b264775867d6d1bac45df2998e0bc4c",
+      "required_patterns": [
+        "RetroArch Web Player",
+        "Emscripten",
+        "PROXY_TO_PTHREAD",
+        "Cross-Origin-Opener-Policy",
+        "HAVE_WASMFS"
+      ]
+    },
+    {
+      "id": "psp-ppsspp-web",
+      "platform": "psp",
+      "kind": "community",
+      "repo": "https://github.com/root-hunter/ppsspp-web.git",
+      "commit": "57121017f82f411f96ca0481dbd0c9d609e9cc0b",
+      "required_patterns": [
+        "PPSSPP WebAssembly",
+        "COOP/COEP",
+        "deps/ppsspp-wasm",
+        "make wasm-dev",
+        "make serve"
+      ]
+    }
+  ]
+}
