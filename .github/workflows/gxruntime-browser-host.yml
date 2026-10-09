@@ -30,6 +30,7 @@ jobs:
           python targets/gcwii-browser-host/apply_web_deps.py "$RUNNER_TEMP/gxruntime"
           python targets/gcwii-browser-host/apply_imgui_web.py "$RUNNER_TEMP/gxruntime"
           python targets/gcwii-browser-host/apply_webgpu_headers.py "$RUNNER_TEMP/gxruntime"
+          python targets/gcwii-browser-host/apply_dawn_native_guards.py "$RUNNER_TEMP/gxruntime"
           git -C "$RUNNER_TEMP/gxruntime" diff --check
           git -C "$RUNNER_TEMP/gxruntime" diff --stat
           grep -q 'EmscriptenSurfaceSourceCanvasHTMLSelector' "$RUNNER_TEMP/gxruntime/graphics/aurora/lib/dawn/BackendBinding.cpp"
@@ -38,6 +39,7 @@ jobs:
           grep -q 'Dear ImGui WebGPU Emscripten compatibility anchor not found' "$RUNNER_TEMP/gxruntime/graphics/aurora/extern/CMakeLists.txt"
           grep -q 'webgpu/webgpu_cpp.h' "$RUNNER_TEMP/gxruntime/graphics/aurora/lib/rmlui.hpp"
           grep -q 'webgpu/webgpu_cpp.h' "$RUNNER_TEMP/gxruntime/graphics/aurora/lib/rmlui/WebGPURenderInterface.hpp"
+          grep -q '#ifdef WEBGPU_DAWN' "$RUNNER_TEMP/gxruntime/graphics/aurora/lib/webgpu/gpu.cpp"
       - name: Install pinned Emscripten SDK
         shell: bash
         run: |
