@@ -57,6 +57,7 @@ The machine-readable registry lives in `routes.json`.
 
 ## What is in this repo
 
+- `upstream/retroReversing/` — pinned `RetroReversing/retroReversing` submodule used as the first-stop knowledge base for console architecture, SDKs, file formats, existing source/reversing projects and tools.
 - `portctl.py` — route resolver, prerequisite doctor, upstream tool fetcher and per-game scaffold.
 - `routes.json` — platform -> preferred route/status/tools/fallbacks.
 - `toolchains.json` — curated upstream tool registry grouped by platform/purpose.
@@ -70,11 +71,12 @@ The machine-readable registry lives in `routes.json`.
 - `docs/PORTING_MATRIX.md`, `docs/WEB_TARGET.md`, `docs/LEGAL.md` — general porting/browser/legal guidance.
 - `web-shell/` — minimal browser capability probe.
 
-Third-party projects are not vendored. `portctl.py fetch ...` clones them under `.tools/`, which is ignored by Git.
+Executable third-party tool projects are normally cloned by `portctl.py fetch ...` under ignored `.tools/`. The RetroReversing knowledge base is different: it is pinned as a Git submodule so agents can search it locally without copying its history into this repository.
 
 ## Quick start
 
 ```bash
+git submodule update --init --recursive
 python portctl.py list
 python portctl.py route n64
 python portctl.py doctor
@@ -82,6 +84,8 @@ python portctl.py fetch web
 python portctl.py fetch n64
 python portctl.py new my-game --platform n64
 ```
+
+Before doing new platform/tool research, search `upstream/retroReversing/` first.
 
 For the browser execution references:
 
@@ -117,33 +121,3 @@ DolRecomp/GXRuntime/ModernGekko provide a strong native AOT/runtime foundation. 
 ### PS2 browser fallback
 
 Play! officially supports Emscripten/browser builds and an experimental browser frontend. It uses a built-in HLE BIOS, so this route does not require shipping a PS2 BIOS image.
-
-### PSP browser fallback
-
-The tracked PPSSPP-Web route is a community project, not an official PPSSPP release. The repo labels it accordingly.
-
-### PS1/classic browser fallback
-
-RetroArch provides an official Emscripten frontend with documented WebGL, threaded builds, AudioWorklet, WasmFS/OPFS and COOP/COEP support. The individual libretro core must also support the web target.
-
-## Browser reality
-
-CPU translation is only one part of a browser port. A complete result may still need:
-
-- graphics -> WebGL2/WebGPU;
-- audio -> WebAudio / AudioWorklet;
-- input -> Gamepad/Keyboard/Pointer;
-- filesystem/saves -> IDBFS/OPFS/WasmFS;
-- networking -> WebSocket/WebTransport-compatible paths;
-- threads -> Wasm pthreads plus cross-origin isolation;
-- native JIT/executable-memory/dynamic-library behavior -> browser-safe alternatives.
-
-Use deterministic state/frame comparisons and real browser smoke tests. Do not call a port complete merely because C/C++ compiles to `.wasm`.
-
-## Project policy
-
-This repository intentionally contains no ROMs, ISOs, BIOS/firmware images, keys, extracted commercial assets or proprietary SDK/compiler binaries. Bring your own legally obtained inputs and keep them outside Git; generated workspaces and original-content directories are ignored.
-
-## Status
-
-This is now a **route-driven reverse-engineering/browser-port toolbox** rather than a claim that every platform has the same path. Some routes are real static-recomp browser references, some are explicit engineering gaps, and some are verified emulator fallbacks. CI continuously checks those distinctions against pinned public upstream projects so agents do not work from stale assumptions.

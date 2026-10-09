@@ -1,0 +1,4 @@
+[submodule "upstream/retroReversing"]
+	path = upstream/retroReversing
+	url = https://github.com/RetroReversing/retroReversing.git
+	branch = master

@@ -2,6 +2,12 @@
 
 This repository is designed to be used by coding agents as a reverse-engineering/porting workbench.
 
+## Reuse before build
+
+Before doing new platform/tool research or writing new reverse-engineering infrastructure, search `upstream/retroReversing/` and the already-registered upstream projects first. Reuse or adapt an existing implementation whenever practical. Write new tooling only for a demonstrated integration gap.
+
+`upstream/retroReversing/` is an upstream Git submodule. Treat it as read-only reference material in this repository; do not modify it as part of a port task.
+
 ## Goal
 
 Move a game toward a browser build through the safest viable path:
@@ -24,7 +30,7 @@ Never describe an experimental route as working unless the build and browser tes
 - Do not bypass DRM, authentication, copy protection or platform security.
 - User-provided original inputs belong in ignored local directories.
 - Prefer upstream open-source tooling and preserve upstream licenses.
-- Keep third-party tools in `.tools/`; do not copy their source into this repo.
+- Keep executable third-party tools in `.tools/`; do not copy their source into this repo.
 - Record exact upstream commit SHAs in each real port workspace once the route stabilizes.
 - Make small, verifiable changes. A compiler success is not equivalent to behavioral correctness.
 - For matching decompilation, use the project's verifier (`objdiff`, `reccmp`, project diff scripts) as ground truth.
@@ -77,6 +83,7 @@ Prefer verifier-guided agent loops over speculative large rewrites.
 ## Commands in this repo
 
 ```bash
+git submodule update --init --recursive
 python portctl.py list
 python portctl.py doctor
 python portctl.py fetch <group>
