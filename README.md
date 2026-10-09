@@ -1,8 +1,37 @@
 # ReverseEngineeringGames
 
-A practical, AI-friendly toolbox for taking **legally obtained game code/binaries** through reverse engineering, decompilation or static recompilation and, where the platform/runtime allows it, shipping the result to a modern **web browser**.
+An AI-friendly toolbox for taking **legally obtained game code/binaries** through reverse engineering, decompilation, static recompilation or a browser-capable emulator path and targeting a modern **web browser**.
 
-> There is no universal "ROM/EXE -> browser" converter. The browser target is common (WebAssembly + Web APIs), but the front-end depends on the original platform and on how much source/decomp/recomp infrastructure already exists.
+> There is no universal `ROM/EXE -> browser` converter. The browser target is common (WebAssembly + browser APIs); the best front-end depends on the original platform and on what source/decomp/recomp/runtime work already exists.
+
+## Start with the route resolver
+
+Before cloning tools, ask the repo which path is currently preferred:
+
+```bash
+python portctl.py route n64
+python portctl.py route gamecube
+python portctl.py route ps2
+python portctl.py route psx
+python portctl.py route psp
+python portctl.py route mystery-console --json
+```
+
+Examples of the current strategy:
+
+| Platform | Preferred browser route today |
+|---|---|
+| Portable source / matching decomp | Emscripten directly |
+| N64 | N64Recomp / source port first; real Ogre Battle 64 browser reference; N64Wasm fallback |
+| GameCube / Wii | DolRecomp + GXRuntime/ModernGekko; CPU/AOT + WebGPU core exist, browser host/surface remains work |
+| PS2 | Official Play! Emscripten/browser build as execution fallback |
+| PSP | Community PPSSPP-Web reference |
+| PS1 | Official RetroArch Emscripten frontend + browser-capable libretro core |
+| NES/SNES/GB/GBA/Genesis | RetroArch Web Player + compatible core |
+| Older 32-bit Windows | matching decomp/static recomp; `recomp-kit` where compatible |
+| Unknown platform | research source/decomp/recomp first, then mature WebAssembly emulator fallback |
+
+The machine-readable registry lives in `routes.json`.
 
 ## Architecture
 
@@ -13,7 +42,7 @@ A practical, AI-friendly toolbox for taking **legally obtained game code/binarie
         |                |                |
    source/decomp     static recomp     emulation fallback
         |                |                |
-   C / C++ / Rust    generated C/LLVM   existing emulator core
+   C / C++ / Rust    generated C/LLVM   mature emulator core
         |                |                |
         +---------- Emscripten / LLVM ----+
                          |
@@ -26,90 +55,95 @@ A practical, AI-friendly toolbox for taking **legally obtained game code/binarie
         +----------- browser shell -------+
 ```
 
-## What this repo gives you
+## What is in this repo
 
-- `portctl.py`: one CLI to inspect the host, fetch selected upstream toolchains and scaffold a web-port workspace.
-- `toolchains.json`: curated upstream tool registry grouped by purpose/platform.
-- `AGENTS.md`: operating rules for Codex/Claude-style coding agents.
-- `docs/PORTING_MATRIX.md`: which route to try for each family of platforms.
-- `docs/WEB_TARGET.md`: browser/Wasm constraints that commonly break native game ports.
-- `docs/LEGAL.md`: clean-room / copyrighted-input guardrails.
-- `web-shell/`: minimal browser capability probe useful before starting a port.
+- `portctl.py` — route resolver, prerequisite doctor, upstream tool fetcher and per-game scaffold.
+- `routes.json` — platform -> preferred route/status/tools/fallbacks.
+- `toolchains.json` — curated upstream tool registry grouped by platform/purpose.
+- `AGENTS.md` — rules for Codex/Claude-style coding agents.
+- `labs/n64-web/` — executable native/Emscripten host probe with N64 controller mapping and browser capability checks.
+- `targets/ogre-battle-64/` — pinned **real N64Recomp browser reference target** using only a locally supplied ROM.
+- `tools/n64_web_audit.py` — N64 browser-readiness audit.
+- `targets/gcwii-web-gap/` + `tools/gcwii_web_audit.py` — pinned GameCube/Wii gap map that distinguishes GXRuntime's existing WebGPU renderer core from the missing browser platform/surface host.
+- `targets/web-fallbacks/` + `tools/web_reference_audit.py` — pinned PS2/PSP/RetroArch browser reference checks.
+- `docs/N64_WEB.md`, `docs/GCWII_WEB.md`, `docs/EMULATION_FALLBACKS.md` — current platform findings.
+- `docs/PORTING_MATRIX.md`, `docs/WEB_TARGET.md`, `docs/LEGAL.md` — general porting/browser/legal guidance.
+- `web-shell/` — minimal browser capability probe.
 
-Third-party tools are **not vendored** into this repository. `portctl.py fetch ...` clones them under `.tools/`, which is gitignored. This keeps their licenses/history intact and makes upgrades explicit.
+Third-party projects are not vendored. `portctl.py fetch ...` clones them under `.tools/`, which is ignored by Git.
 
 ## Quick start
 
-Requirements: Python 3.10+, Git, CMake, Ninja, Clang/LLVM and Node.js. For actual browser builds, install Emscripten (or let `portctl.py` fetch `emsdk`).
-
 ```bash
 python portctl.py list
+python portctl.py route n64
 python portctl.py doctor
 python portctl.py fetch web
 python portctl.py fetch n64
 python portctl.py new my-game --platform n64
 ```
 
-Then initialize Emscripten in your shell using the upstream SDK instructions and validate it:
+For the browser execution references:
 
 ```bash
-python portctl.py doctor --strict
+python portctl.py fetch web-emulation   # Play!, RetroArch, Beetle PSX, PPSSPP-Web
+python portctl.py fetch browser-reference
 ```
 
-Serve the browser probe locally:
+For N64-specific work:
 
 ```bash
-python -m http.server 8000 -d web-shell
+python portctl.py fetch n64-web
+python tools/n64_web_audit.py /path/to/an/n64-recomp-project --strict
 ```
 
-Open `http://localhost:8000`.
-
-## Recommended route by input
-
-| Starting point | First route |
-|---|---|
-| Portable C/C++ source or matching decomp | Emscripten directly |
-| N64 binary + symbols/decomp metadata | N64Recomp -> C/runtime -> adapt runtime to Emscripten |
-| GameCube/Wii DOL/REL | DolRecomp or source decomp -> browser-compatible runtime -> Emscripten |
-| PS1/PS2/PSP matching decomp | Source/decomp -> Emscripten; use `objdiff` during matching |
-| Old 32-bit Windows C++ | Matching decomp (`reccmp` where applicable) -> modern portable source -> Emscripten |
-| DOS / machine with mature emulator core | Compile emulator core to Wasm when a native recomp/decomp route is impractical |
-| Unity/Unreal/closed modern binaries | No generic static port path; obtain source or use a legitimate streaming/emulation approach |
-
-See `docs/PORTING_MATRIX.md` for the detailed matrix and limitations.
-
-## Tool groups
+For GameCube/Wii research:
 
 ```bash
-python portctl.py fetch web       # emsdk, Binaryen, WABT
-python portctl.py fetch analysis  # Ghidra source, objdiff, decomp-toolkit
-python portctl.py fetch agents    # verifier-guided agent harness
-python portctl.py fetch n64       # N64Recomp + N64ModernRuntime
-python portctl.py fetch gcwii     # DolRecomp + ModernGekko + decomp-toolkit
-python portctl.py fetch pc        # reccmp
-python portctl.py fetch all
+python portctl.py fetch gcwii
+python tools/gcwii_web_audit.py /path/to/GXRuntime --strict-foundation
 ```
 
-Use `--dry-run` before cloning, `--update` to fast-forward existing clones, and `--depth 1` for shallow clones.
+## Verified reference paths
 
-## Important browser reality
+### N64 static recompilation
 
-The CPU translation is only part of a port. A working browser version must also replace or adapt:
+The repo tracks a pinned Ogre Battle 64 browser reference demonstrating that N64Recomp-generated code can run under Emscripten with browser input/audio/persistence and a WebGL2 renderer prototype. Rendering coverage is still title/microcode-specific, so a linked `.wasm` is not considered a completed port.
 
-- graphics -> WebGL2 or WebGPU;
-- audio -> WebAudio (often via SDL);
-- input -> Gamepad/Keyboard/Pointer APIs;
-- filesystem -> Emscripten VFS / OPFS / IndexedDB;
-- sockets -> WebSocket/WebTransport-compatible networking;
-- threads -> WebAssembly threads, which require cross-origin isolation;
-- native dynamic libraries / JIT / executable memory -> browser-safe alternatives.
+### GameCube / Wii static recompilation
 
-A static recompiler that emits C is useful because the generated C can *potentially* be compiled by Emscripten, but its native runtime may still depend on APIs that do not exist in browsers.
+DolRecomp/GXRuntime/ModernGekko provide a strong native AOT/runtime foundation. GXRuntime already contains a Dawn/WebGPU renderer substrate. The current missing layer is the actual Emscripten/browser platform + canvas/surface + browser host integration; CI intentionally watches that gap.
+
+### PS2 browser fallback
+
+Play! officially supports Emscripten/browser builds and an experimental browser frontend. It uses a built-in HLE BIOS, so this route does not require shipping a PS2 BIOS image.
+
+### PSP browser fallback
+
+The tracked PPSSPP-Web route is a community project, not an official PPSSPP release. The repo labels it accordingly.
+
+### PS1/classic browser fallback
+
+RetroArch provides an official Emscripten frontend with documented WebGL, threaded builds, AudioWorklet, WasmFS/OPFS and COOP/COEP support. The individual libretro core must also support the web target.
+
+## Browser reality
+
+CPU translation is only one part of a browser port. A complete result may still need:
+
+- graphics -> WebGL2/WebGPU;
+- audio -> WebAudio / AudioWorklet;
+- input -> Gamepad/Keyboard/Pointer;
+- filesystem/saves -> IDBFS/OPFS/WasmFS;
+- networking -> WebSocket/WebTransport-compatible paths;
+- threads -> Wasm pthreads plus cross-origin isolation;
+- native JIT/executable-memory/dynamic-library behavior -> browser-safe alternatives.
+
+Use deterministic state/frame comparisons and real browser smoke tests. Do not call a port complete merely because C/C++ compiles to `.wasm`.
 
 ## Project policy
 
-This repo intentionally contains no ROMs, ISOs, keys, firmware, extracted commercial assets or proprietary SDK/compiler binaries. Bring your own legally obtained inputs and keep them outside Git; generated workspaces ignore `original/`, `roms/`, `iso/`, `assets-original/` and similar paths.
+This repository intentionally contains no ROMs, ISOs, BIOS/firmware images, keys, extracted commercial assets or proprietary SDK/compiler binaries. Bring your own legally obtained inputs and keep them outside Git; generated workspaces and original-content directories are ignored.
 
 ## Status
 
-This is a **toolbox and workflow scaffold**, not a claim that every listed platform can already be recompiled to a browser. The goal is to make the route, blockers and verification loop explicit so an AI coding agent can work productively instead of guessing.
+This is now a **route-driven reverse-engineering/browser-port toolbox** rather than a claim that every platform has the same path. Some routes are real static-recomp browser references, some are explicit engineering gaps, and some are verified emulator fallbacks. CI continuously checks those distinctions against pinned public upstream projects so agents do not work from stale assumptions.
