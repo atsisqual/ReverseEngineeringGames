@@ -1,0 +1,43 @@
+name: n64-web-smoke
+
+on:
+  push:
+    paths:
+      - 'labs/n64-web/**'
+      - '.github/workflows/n64-web-smoke.yml'
+  pull_request:
+    paths:
+      - 'labs/n64-web/**'
+      - '.github/workflows/n64-web-smoke.yml'
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure native smoke build
+        run: cmake -S labs/n64-web -B build/n64-native -G Ninja
+      - name: Build native smoke target
+        run: cmake --build build/n64-native
+      - name: Run native smoke target
+        run: ./build/n64-native/reg_n64_web_smoke
+      - name: Check lab layout
+        run: python -m pytest -q labs/n64-web/tests
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Emscripten SDK
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install 6.0.12
+          "$RUNNER_TEMP/emsdk/emsdk" activate 6.0.12
+      - name: Configure and build Wasm smoke target
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          emcmake cmake -S labs/n64-web -B build/n64-web -G Ninja
+          cmake --build build/n64-web
+          test -s build/n64-web/reg_n64_web_smoke.html
+          test -s build/n64-web/reg_n64_web_smoke.wasm
