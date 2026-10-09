@@ -1,0 +1,26 @@
+name: replace-with-retroreversing
+
+on:
+  push:
+    branches:
+      - ops/replace-with-retroreversing
+
+permissions:
+  contents: write
+
+jobs:
+  replace-main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Replace main with pinned RetroReversing snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          upstream_sha=bc66d3b06afc2959d36007ad8e9950bff8f80f6d
+          git remote add upstream https://github.com/RetroReversing/retroReversing.git
+          git fetch upstream "$upstream_sha"
+          test "$(git rev-parse FETCH_HEAD)" = "$upstream_sha"
+          git push --force origin "FETCH_HEAD:refs/heads/main"
