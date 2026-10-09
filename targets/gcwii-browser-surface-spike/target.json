@@ -1,0 +1,18 @@
+{
+  "id": "gcwii-browser-surface-spike",
+  "platforms": ["gamecube", "wii"],
+  "status": "generic-browser-webgpu-canvas-surface-proven-gxruntime-integration-pending",
+  "gxruntime": {
+    "repo": "https://github.com/aharonahdoot/GXRuntime.git",
+    "commit": "8a47b0e8ea7dfc39014a4cff4f7895d88494a611"
+  },
+  "emscripten": "6.0.12",
+  "webgpu_port": "emdawnwebgpu",
+  "canvas_selector": "#canvas",
+  "next_gxruntime_changes": [
+    "emscripten-dawn-provider",
+    "browser-canvas-surface-descriptor",
+    "guard-native-dawn-instance-setup",
+    "browser-safe-adapter-device-acquisition"
+  ]
+}

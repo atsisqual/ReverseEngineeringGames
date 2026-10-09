@@ -1,0 +1,36 @@
+name: gcwii-web-surface
+
+on:
+  push:
+    paths:
+      - 'labs/gcwii-web-surface/**'
+      - 'targets/gcwii-browser-surface-spike/**'
+      - '.github/workflows/gcwii-web-surface.yml'
+  pull_request:
+    paths:
+      - 'labs/gcwii-web-surface/**'
+      - 'targets/gcwii-browser-surface-spike/**'
+      - '.github/workflows/gcwii-web-surface.yml'
+
+jobs:
+  wasm-surface:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check lab invariants
+        run: python -m unittest discover -s labs/gcwii-web-surface/tests -p 'test_*.py' -v
+      - name: Install pinned Emscripten SDK
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install 6.0.12
+          "$RUNNER_TEMP/emsdk/emsdk" activate 6.0.12
+      - name: Compile browser WebGPU surface probe
+        shell: bash
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          emcmake cmake -S labs/gcwii-web-surface -B build/gcwii-web-surface -G Ninja
+          cmake --build build/gcwii-web-surface
+          test -s build/gcwii-web-surface/reg_gcwii_web_surface.html
+          test -s build/gcwii-web-surface/reg_gcwii_web_surface.js
+          test -s build/gcwii-web-surface/reg_gcwii_web_surface.wasm
+          grep -q 'id="canvas"' build/gcwii-web-surface/reg_gcwii_web_surface.html
