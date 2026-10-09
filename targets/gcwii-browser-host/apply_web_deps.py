@@ -3,7 +3,8 @@
 
 A single browser Wasm module should not inherit Aurora's desktop default of
 building fetched dependencies as shared libraries. Keep the desktop policy
-unchanged and only flip the internal _USE_SHARED switch for Emscripten.
+unchanged and force both Aurora's internal switch and CMake's real
+BUILD_SHARED_LIBS switch off for Emscripten.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ def main() -> int:
     path = root / "graphics" / "aurora" / "extern" / "CMakeLists.txt"
     text = path.read_text(encoding="utf-8")
     old = """if (NOT DEFINED BUILD_SHARED_LIBS)\n  set(_USE_SHARED ON)\nelse ()\n  set(_USE_SHARED OFF)\nendif ()\n"""
-    new = """if (EMSCRIPTEN)\n  # Browser builds are delivered as one Wasm module. Do not ask fetched\n  # dependencies such as zlib/libpng/zstd to produce Emscripten side modules.\n  set(_USE_SHARED OFF)\nelseif (NOT DEFINED BUILD_SHARED_LIBS)\n  set(_USE_SHARED ON)\nelse ()\n  set(_USE_SHARED OFF)\nendif ()\n"""
+    new = """if (EMSCRIPTEN)\n  # Browser builds are delivered as one Wasm module. Do not ask fetched\n  # dependencies such as zlib/libpng/zstd to produce Emscripten side modules.\n  set(BUILD_SHARED_LIBS OFF CACHE BOOL \"Build shared libraries\" FORCE)\n  set(_USE_SHARED OFF)\nelseif (NOT DEFINED BUILD_SHARED_LIBS)\n  set(_USE_SHARED ON)\nelse ()\n  set(_USE_SHARED OFF)\nendif ()\n"""
     if text.count(old) != 1:
         raise SystemExit(f"{path}: expected exactly one shared-policy anchor")
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
