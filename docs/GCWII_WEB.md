@@ -4,17 +4,20 @@ Status date: 2026-10-09.
 
 ## Current reality
 
-The CPU/static-recomp side is strong and GXRuntime already carries a WebGPU/Dawn renderer substrate. The browser host is now split into small, mechanically proven work packages instead of one generic blocker.
+The CPU/static-recomp side is strong and GXRuntime already carries a WebGPU/Dawn renderer substrate. Browser bring-up is now decomposed into small, mechanically proven pieces rather than one generic blocker.
 
 - **DolRecomp** recompiles GameCube/Wii PowerPC DOL/REL code to C and also has an LLVM backend.
 - **ModernGekko** is the ExpansionPak runtime for native recomp projects.
-- **GXRuntime** is a game-agnostic runtime with PPC semantics, devices and a GX renderer. Its CPU semantics are validated against Dolphin's interpreter. Its vendored Aurora substrate already uses WebGPU via Chromium Dawn, and the public README reports full-game rendering through the current desktop/Aurora host.
-- **RecompCore** is the accuracy/oracle route: statically recompiled code runs inside a Dolphin-derived runtime with interpreter fallback/lockstep.
-- The pinned public GXRuntime tree still has no Emscripten/browser platform backend, but `labs/gcwii-web-surface/` now proves both the missing canvas surface primitive and a non-blocking browser adapter/device bootstrap with Emscripten 6.0.12 + `emdawnwebgpu`.
+- **GXRuntime** is a game-agnostic runtime with PPC semantics, devices and a GX renderer. Its CPU semantics are validated against Dolphin's interpreter. Its vendored Aurora substrate already uses WebGPU via Chromium Dawn.
+- **RecompCore** remains the correctness/oracle route against Dolphin-derived behavior.
+- The pinned public GXRuntime tree still has no Emscripten/browser platform backend, but `labs/gcwii-web-surface/` now proves the canvas surface, asynchronous adapter/device acquisition, and a synchronous-API bridge for the existing Aurora startup contract.
 
-Aurora already expresses surface creation through a chained `wgpu::SurfaceDescriptor`. On native platforms it fills that chain from an SDL window. On the web, Emdawnwebgpu provides `wgpu::EmscriptenSurfaceSourceCanvasHTMLSelector`, so the browser path can preserve the renderer abstraction and substitute only the platform source.
+Aurora already creates surfaces through a chained `wgpu::SurfaceDescriptor`. Emdawnwebgpu provides `wgpu::EmscriptenSurfaceSourceCanvasHTMLSelector`, so the browser path can preserve the renderer abstraction and swap only the platform-specific source.
 
-The current Aurora `gpu.cpp` also requests `TimedWaitAny` and calls `WaitAny` for adapter/device creation. The browser probe demonstrates that this can instead be expressed as `RequestAdapter(AllowSpontaneous)` → `RequestDevice(AllowSpontaneous)` while the Emscripten event loop remains alive.
+The current `aurora::initialize()` expects `webgpu::initialize()` to return a `bool` immediately. Native Dawn implements the request path with `TimedWaitAny`/`WaitAny`, while browser WebGPU is async-only. The browser probes now prove two usable alternatives:
+
+- pure callback bootstrap with `CallbackMode::AllowSpontaneous`;
+- a transitional synchronous C++ bridge using Asyncify + `emscripten_sleep(0)` to yield until callbacks complete.
 
 ```text
 GameCube/Wii DOL + RELs
@@ -33,21 +36,22 @@ WebAssembly
   |
 existing GX WebGPU renderer
   |
-canvas surface + async WebGPU bootstrap + WebAudio + Gamepad + storage
+canvas surface + WebGPU bootstrap + WebAudio + Gamepad + storage
 ```
 
 ## Browser work packages
 
-1. **Surface primitive — proven in isolation.** `reg_gcwii_web_surface` compiles Dawn-style `webgpu_cpp.h` with `--use-port=emdawnwebgpu` and creates a WebGPU surface for `#canvas`.
-2. **Adapter/device bootstrap — proven in isolation.** `reg_gcwii_web_device` uses asynchronous WebGPU callbacks and explicitly contains no `WaitAny`/`TimedWaitAny` path.
-3. Add an Emscripten Dawn provider in Aurora so web builds use Emdawnwebgpu rather than native Dawn packages/source.
-4. Add the Emscripten canvas branch to `SetupWindowAndGetSurfaceDescriptor`.
-5. Guard native-only Dawn instance setup (`dawn/native/DawnNative.h`, validation/platform hooks) and use the proven async bootstrap under Emscripten.
-6. Prove the GXRuntime core and generated PPC code compile with Emscripten.
-7. Define a Wasm-safe guest-memory model and keep the AOT path JIT-free.
-8. Add browser input, audio and persistent memory-card/save storage.
-9. If pthreads are needed, use a worker architecture and COOP/COEP isolation. The lab includes a local server with the required headers.
-10. Validate PPC state and GX output against RecompCore/Dolphin before optimizing.
+1. **Surface primitive — proven.** `reg_gcwii_web_surface` compiles Dawn-style `webgpu_cpp.h` with `--use-port=emdawnwebgpu` and creates a WebGPU surface for `#canvas`.
+2. **Async adapter/device bootstrap — proven.** `reg_gcwii_web_device` uses browser callbacks and contains no native future-wait path.
+3. **Synchronous Aurora contract bridge — proven at compile/link level.** `reg_gcwii_web_syncbridge` links with `-sASYNCIFY=1`; `emscripten_sleep(0)` yields while adapter/device callbacks resolve, so a `bool initialize()`-style call can be retained during bring-up.
+4. Add an Emscripten Dawn provider in Aurora so web builds use Emdawnwebgpu rather than native Dawn packages/source.
+5. Add the Emscripten canvas branch to `SetupWindowAndGetSurfaceDescriptor`.
+6. Guard native-only Dawn instance setup (`dawn/native/DawnNative.h`, validation/platform hooks) and transplant the sync bridge into the Emscripten `gpu.cpp` path.
+7. Prove the patched GXRuntime/Aurora tree configures and then compiles with Emscripten.
+8. Define a Wasm-safe guest-memory model and keep the AOT path JIT-free.
+9. Add browser input, audio and persistent memory-card/save storage.
+10. If pthreads are required, use COOP/COEP isolation and validate worker scheduling.
+11. Validate PPC state and GX output against RecompCore/Dolphin before optimizing.
 
 ## Browser probes
 
@@ -58,7 +62,9 @@ cmake --build build/gcwii-web-surface
 python labs/gcwii-web-surface/serve.py build/gcwii-web-surface
 ```
 
-CI pins Emscripten 6.0.12 and requires `.html`, `.js` and `.wasm` for both the surface and async device-bootstrap targets.
+CI pins Emscripten 6.0.12 and requires `.html`, `.js` and `.wasm` for all three targets: surface, async device bootstrap and synchronous Asyncify bridge.
+
+Asyncify is intentionally a bring-up mechanism, not an architectural commitment. Once the real runtime boots, measure Wasm size/startup/runtime cost; if material, replace the bridge with an explicit asynchronous Aurora startup state machine using the already-proven callback flow.
 
 ## Mechanical upstream gap check
 
