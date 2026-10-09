@@ -88,7 +88,7 @@ int main() {
       });
 
   // Browser WebGPU resolves adapter/device requests asynchronously. Keep the JS
-  // event loop alive; deliberately do not use Dawn's native TimedWaitAny/WaitAny.
+  // event loop alive rather than blocking on native Dawn future-wait APIs.
   emscripten_set_main_loop(tick, 0, 1);
   return 0;
 }
