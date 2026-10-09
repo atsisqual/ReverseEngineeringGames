@@ -1,4 +1,5 @@
 .tools/
+.work/
 ports/*/original/
 ports/*/roms/
 ports/*/iso/

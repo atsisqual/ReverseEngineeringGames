@@ -2,14 +2,24 @@
 
 Status date: 2026-10-09.
 
-## What is verified upstream
+## What is now verified
 
-- N64Recomp statically translates N64/MIPS functions to portable C and explicitly expects a runtime to provide macros/platform behavior.
-- N64ModernRuntime provides `ultramodern` + `librecomp`; projects provide callbacks for input/audio and must register a renderer.
-- N64ModernRuntime's current public renderer header has platform window-handle branches for Windows, Linux/Android and Apple, but no Emscripten branch.
-- N64Wasm is a WebAssembly N64 emulator and is the immediate fallback when a true static port is not yet practical.
-- Emscripten SDK `latest` currently resolves to 6.0.12; this repo pins 6.0.12 in CI so browser-probe breakage is reproducible.
-- `recomp-kit` demonstrates a modern recomp-to-browser architecture (WebGPU + pthreads + WasmFS) for 32-bit x86 Windows games. It is architectural evidence, not an N64 runtime.
+- N64Recomp statically translates N64/MIPS functions to portable C and expects a
+  runtime to provide platform behavior.
+- N64ModernRuntime provides `ultramodern` + `librecomp`; projects supply
+  platform callbacks and a renderer.
+- **A true N64Recomp browser path exists in public code today.** The Ogre Battle
+  64 recomp project has Emscripten runtime patches, Wasm pthreads, browser
+  input/audio/persistence and a WebGL2 renderer prototype. Its browser build has
+  reached real RSP display-list submission and renders the title sprite layer.
+- That renderer is not yet universal or complete: current Ogre Battle 64 notes
+  identify missing S2DEX2 support and incorrect parts of 3D/menu rendering.
+- N64Wasm remains the practical emulator fallback for titles where a static
+  recomp/decomp browser runtime is not yet economical.
+- Emscripten SDK `latest` currently resolves to 6.0.12; this repo pins 6.0.12 in
+  its own browser smoke CI.
+- `recomp-kit` separately demonstrates static recompilation to a WebGPU browser
+  host for older x86 Windows games and is useful architectural evidence.
 
 ## Decision tree
 
@@ -23,22 +33,48 @@ N64 title
   |                                                |
   |                                                +-> N64ModernRuntime
   |                                                     |
-  |                                                     +-> browser input/audio adapters
-  |                                                     +-> WEB RENDERER (open blocker)
+  |                                                     +-> Emscripten patches
+  |                                                     +-> input/audio/storage
+  |                                                     +-> game-specific GBI/RSP/RDP renderer work
   |
   +-- need browser execution now? -------- yes --> N64Wasm emulator fallback
 ```
 
-## Browser-runtime work packages
+## Reusable browser-runtime work packages
 
-1. **Input**: implemented in `labs/n64-web`; map standard Gamepad API to N64 buttons/stick and optional rumble.
-2. **Audio**: implement N64ModernRuntime's `audio_callbacks_t` on top of WebAudio/AudioWorklet (or SDL audio as an interim adapter).
-3. **Renderer**: the main blocker. Provide a `RendererContext` implementation backed by WebGPU/WebGL and an RSP/RDP path compatible with the target game.
-4. **Window handle**: upstream runtime needs an Emscripten-safe `WindowHandle` representation before it can be compiled unchanged for Wasm.
-5. **Saving**: bridge EEPROM/SRAM/Flashram persistence to browser storage (OPFS/IndexedDB/WasmFS strategy depends on runtime choice).
-6. **Threads**: compile with Wasm pthreads only after serving COOP/COEP headers and auditing blocking waits.
-7. **Validation**: compare deterministic game state/frame checkpoints against a native reference; rendering screenshots alone are insufficient.
+1. **Generated CPU code** — N64Recomp output must compile cleanly under the
+   selected Emscripten/Clang revision without native executable-memory assumptions.
+2. **Runtime memory** — replace native guard-page/mmap strategies with a Wasm-safe
+   allocation model and choose a deliberate initial/maximum memory policy.
+3. **Live recomp/JIT** — browsers do not allow the normal native executable-memory
+   model; disable or stub live native recompilation for the web target.
+4. **Threads** — map `std::thread`/runtime workers to Wasm pthreads and serve with
+   COOP/COEP so `SharedArrayBuffer` is available.
+5. **Input** — `labs/n64-web` contains a generic Gamepad-to-N64 mapping; real
+   projects can wire equivalent callbacks/exports.
+6. **Audio** — AudioWorklet is a proven approach; a stable shared Wasm heap avoids
+   invalidating buffers handed to the worklet.
+7. **Saving/ROM storage** — IDBFS/OPFS/WasmFS are viable. Ogre Battle 64 proves
+   IDBFS persistence while keeping the user's ROM outside Git.
+8. **Renderer** — this is now a *per-game/per-microcode engineering problem*, not
+   an unknown feasibility problem. Ogre Battle 64's WebGL2 prototype is the
+   concrete reference; coverage of F3DEX2/S2DEX2 and framebuffer/VI behavior must
+   be measured for each title.
+9. **Validation** — compare deterministic game-state milestones and native
+   reference frames. A successful `.wasm` link is only the start.
+
+## Tooling in this repository
+
+- `labs/n64-web/` — small Emscripten/browser host probe.
+- `tools/n64_web_audit.py` — static readiness audit for N64Recomp-style trees.
+- `targets/ogre-battle-64/` — pinned real-game reference/orchestration that uses
+  only a locally supplied ROM.
+- `python portctl.py fetch n64-web` — core N64/web toolchain.
+- `python portctl.py fetch n64-web-reference` — public projects worth studying.
 
 ## Agent rule
 
-An AI agent must not mark the static-recomp browser route as complete merely because generated C compiles to `.wasm`. Completion requires at least controller input, audio, saving and actual RSP/RDP-rendered gameplay in a browser.
+An agent must not call a static-recomp browser port complete because generated C
+links to `.wasm` or because one display list renders. Completion requires the
+actual target game's required microcodes/render paths plus input, audio, saving
+and stable gameplay in a browser.
