@@ -20,17 +20,19 @@ class Tests(unittest.TestCase):
             self.assertEqual(idx['runtime-core'].status,'pass')
             self.assertEqual(idx['aot-no-jit'].status,'pass')
             self.assertEqual(idx['emscripten-build'].status,'miss')
-            self.assertEqual(idx['browser-renderer'].status,'miss')
+            self.assertEqual(idx['webgpu-renderer-core'].status,'miss')
+            self.assertEqual(idx['browser-surface'].status,'miss')
 
     def test_browser_fixture_passes_web_rules(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)
-            (root/'CMakeLists.txt').write_text('DolRecomp GXRuntime AOT EMSCRIPTEN emcc WebGPU',encoding='utf-8')
-            (root/'web.js').write_text('navigator.getGamepads(); AudioWorklet; OPFS; crossOriginIsolated',encoding='utf-8')
+            (root/'CMakeLists.txt').write_text('DolRecomp GXRuntime AOT EMSCRIPTEN emcc WebGPU Dawn',encoding='utf-8')
+            (root/'web.js').write_text('navigator.gpu; navigator.getGamepads(); AudioWorklet; OPFS; crossOriginIsolated',encoding='utf-8')
             (root/'server.md').write_text('Cross-Origin-Opener-Policy Cross-Origin-Embedder-Policy',encoding='utf-8')
             idx=mod.by_id(mod.audit(root))
             self.assertEqual(idx['emscripten-build'].status,'pass')
-            self.assertEqual(idx['browser-renderer'].status,'pass')
+            self.assertEqual(idx['webgpu-renderer-core'].status,'pass')
+            self.assertEqual(idx['browser-surface'].status,'pass')
             self.assertEqual(idx['cross-origin-isolation'].status,'pass')
 
 if __name__=='__main__': unittest.main()

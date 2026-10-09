@@ -1,7 +1,10 @@
 {
   "id": "gcwii-web-gap",
-  "platforms": ["gamecube", "wii"],
-  "status": "native-static-recomp-foundation-ready-browser-host-not-yet-publicly-complete",
+  "platforms": [
+    "gamecube",
+    "wii"
+  ],
+  "status": "static-recomp-and-webgpu-renderer-core-ready-browser-platform-host-not-yet-publicly-complete",
   "dolrecomp": {
     "repo": "https://github.com/ExpansionPak/DolRecomp.git",
     "commit": "c876e2b9e022e084aa9a690fe15e2ad79a0706cd"
@@ -14,5 +17,9 @@
     "repo": "https://github.com/aharonahdoot/GXRuntime.git",
     "commit": "8a47b0e8ea7dfc39014a4cff4f7895d88494a611"
   },
-  "expected_browser_gaps": ["emscripten-build", "browser-renderer", "cross-origin-isolation"]
+  "expected_browser_gaps": [
+    "emscripten-build",
+    "browser-surface",
+    "cross-origin-isolation"
+  ]
 }

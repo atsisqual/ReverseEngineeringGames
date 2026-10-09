@@ -4,13 +4,13 @@ Status date: 2026-10-09.
 
 ## Current reality
 
-The CPU/static-recomp side is strong; the browser host is the missing layer.
+The CPU/static-recomp side is strong and GXRuntime already carries a WebGPU/Dawn renderer substrate; the browser platform/surface host is the missing layer.
 
 - **DolRecomp** recompiles GameCube/Wii PowerPC DOL/REL code to C and also has an LLVM backend.
 - **ModernGekko** is the ExpansionPak runtime for native recomp projects.
-- **GXRuntime** is a game-agnostic runtime with PPC semantics, devices and a GX renderer. Its CPU semantics are validated against Dolphin's interpreter and its public README reports full-game rendering through its current desktop/Aurora host.
+- **GXRuntime** is a game-agnostic runtime with PPC semantics, devices and a GX renderer. Its CPU semantics are validated against Dolphin's interpreter. Its vendored Aurora substrate already uses WebGPU via Chromium Dawn, and the public README reports full-game rendering through the current desktop/Aurora host.
 - **RecompCore** is the accuracy/oracle route: statically recompiled code runs inside a Dolphin-derived runtime with interpreter fallback/lockstep.
-- As of this snapshot, searches of the current public ModernGekko/GXRuntime trees do **not** expose a completed Emscripten + WebGL/WebGPU browser backend comparable to the N64 Ogre Battle reference.
+- As of this snapshot, the public GXRuntime tree has WebGPU renderer code but does **not** expose the browser-specific Emscripten/canvas presentation path, browser I/O host, or COOP/COEP setup needed for a completed browser target comparable to the N64 Ogre Battle reference.
 
 So the recommended engineering path is not "rewrite the CPU". It is:
 
@@ -29,7 +29,7 @@ Emscripten host              correctness oracle
   |                           RecompCore/Dolphin
 WebAssembly
   |
-WebGPU/WebGL + WebAudio + Gamepad + browser storage
+WebGPU browser surface + WebAudio + Gamepad + browser storage
 ```
 
 ## Browser work packages
@@ -37,7 +37,7 @@ WebGPU/WebGL + WebAudio + Gamepad + browser storage
 1. Prove the headless/runtime core compiles with Emscripten without the Aurora/native window backend.
 2. Define a Wasm-safe guest-memory model and remove native VM/executable-memory assumptions.
 3. Keep the AOT path JIT-free.
-4. Port GX command processing/presentation to WebGPU or WebGL2; preserve a measurable GX-register/opcode coverage gate.
+4. Reuse the existing WebGPU/Dawn GX renderer where practical, but add an Emscripten/browser canvas/surface presentation path and preserve the existing measurable GX-register/opcode coverage gate.
 5. Add browser input, audio and persistent memory-card/save storage.
 6. If pthreads are needed, use a worker architecture and COOP/COEP isolation.
 7. Validate PPC state and GX output against RecompCore/Dolphin before optimizing.
@@ -52,8 +52,10 @@ The pinned gap target intentionally expects these rules to be missing today:
 
 ```text
 emscripten-build
-browser-renderer
+browser-surface
 cross-origin-isolation
 ```
 
-CI fails if those expectations change. That is deliberate: when upstream gains a browser backend, this repository should stop calling it a gap and promote it to a real browser reference target.
+`webgpu-renderer-core` is expected to pass: that detects the existing Dawn/WebGPU renderer substrate, not a browser target.
+
+CI fails if the missing expectations change. That is deliberate: when upstream gains a browser platform/surface backend, this repository should stop calling it a gap and promote it to a real browser reference target.

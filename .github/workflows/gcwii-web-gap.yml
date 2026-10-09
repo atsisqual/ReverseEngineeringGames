@@ -33,4 +33,4 @@ jobs:
         run: >-
           python tools/gcwii_web_audit.py /tmp/gxruntime
           --strict-foundation
-          --expect-missing emscripten-build,browser-renderer,cross-origin-isolation
+          --expect-missing emscripten-build,browser-surface,cross-origin-isolation
