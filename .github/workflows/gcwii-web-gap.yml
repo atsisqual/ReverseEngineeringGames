@@ -1,0 +1,36 @@
+name: gcwii-web-gap
+
+on:
+  push:
+    paths:
+      - 'tools/gcwii_web_audit.py'
+      - 'tests/test_gcwii_web_audit.py'
+      - 'targets/gcwii-web-gap/**'
+      - 'docs/GCWII_WEB.md'
+      - '.github/workflows/gcwii-web-gap.yml'
+  pull_request:
+    paths:
+      - 'tools/gcwii_web_audit.py'
+      - 'tests/test_gcwii_web_audit.py'
+      - 'targets/gcwii-web-gap/**'
+      - 'docs/GCWII_WEB.md'
+      - '.github/workflows/gcwii-web-gap.yml'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: python -m unittest -v tests/test_gcwii_web_audit.py
+      - name: Fetch pinned GXRuntime
+        run: |
+          git init /tmp/gxruntime
+          git -C /tmp/gxruntime remote add origin https://github.com/aharonahdoot/GXRuntime.git
+          git -C /tmp/gxruntime fetch --depth 1 origin 8a47b0e8ea7dfc39014a4cff4f7895d88494a611
+          git -C /tmp/gxruntime checkout --detach FETCH_HEAD
+      - name: Confirm foundation and current web gaps
+        run: >-
+          python tools/gcwii_web_audit.py /tmp/gxruntime
+          --strict-foundation
+          --expect-missing emscripten-build,browser-renderer,cross-origin-isolation
