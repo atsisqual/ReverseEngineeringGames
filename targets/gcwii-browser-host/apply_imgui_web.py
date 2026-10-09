@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Adapt Aurora's Dear ImGui WebGPU backend selection for Emscripten.
+"""Backport Dear ImGui's Emdawnwebgpu compatibility into pinned Aurora.
 
-Dear ImGui's WebGPU backend deliberately requires *no* native-backend macro
-when compiling for Emscripten. Aurora defines the Dawn macro both on the
-imgui_backends target and in lib/imgui.cpp, so make those definitions native
-only while leaving desktop behavior unchanged.
+Aurora pins Dear ImGui v1.91.9b. That backend already contains the modern Dawn
+code paths Aurora needs, but its old preprocessor guard rejects defining the
+Dawn backend under Emscripten. Dear ImGui fixed exactly that upstream on
+2025-10-16 for Emscripten 4.0.10+ / --use-port=emdawnwebgpu.
+
+Keep Aurora's existing IMGUI_IMPL_WEBGPU_BACKEND_DAWN definitions and patch only
+the fetched backend guard during CMake configure, before imgui_backends builds.
 """
 
 from __future__ import annotations
@@ -36,23 +39,14 @@ def main() -> int:
     if actual != PINNED_GXRUNTIME:
         raise SystemExit(f"GXRuntime pin mismatch: expected {PINNED_GXRUNTIME}, got {actual}")
 
-    aurora = root / "graphics" / "aurora"
-
-    extern_cmake = aurora / "extern" / "CMakeLists.txt"
+    extern_cmake = root / "graphics" / "aurora" / "extern" / "CMakeLists.txt"
     replace_once(
         extern_cmake,
-        """    target_compile_definitions(imgui_backends PRIVATE IMGUI_IMPL_WEBGPU_BACKEND_DAWN)\n    target_link_libraries(imgui_backends PRIVATE imgui ${AURORA_SDL3_TARGET} dawn::webgpu_dawn)\n""",
-        """    # Dear ImGui selects Emscripten WebGPU automatically and rejects the\n    # native Dawn/WGPU backend macros on browser builds.\n    if (NOT EMSCRIPTEN)\n      target_compile_definitions(imgui_backends PRIVATE IMGUI_IMPL_WEBGPU_BACKEND_DAWN)\n    endif ()\n    target_link_libraries(imgui_backends PRIVATE imgui ${AURORA_SDL3_TARGET} dawn::webgpu_dawn)\n""",
+        """    FetchContent_MakeAvailable(imgui)\n\n    add_library(imgui STATIC\n""",
+        """    FetchContent_MakeAvailable(imgui)\n\n    if (EMSCRIPTEN)\n      # Dear ImGui v1.91.9b predates Emdawnwebgpu support and rejects the\n      # Dawn backend macro under Emscripten. Backport the upstream 2025-10-16\n      # guard change so the existing Dawn code paths are selected.\n      set(_aurora_imgui_wgpu_cpp \"${imgui_SOURCE_DIR}/backends/imgui_impl_wgpu.cpp\")\n      file(READ \"${_aurora_imgui_wgpu_cpp}\" _aurora_imgui_wgpu_source)\n      set(_aurora_imgui_wgpu_old [=[\n// When targeting native platforms (i.e. NOT emscripten), one of IMGUI_IMPL_WEBGPU_BACKEND_DAWN\n// or IMGUI_IMPL_WEBGPU_BACKEND_WGPU must be provided. See imgui_impl_wgpu.h for more details.\n#ifndef __EMSCRIPTEN__\n    #if defined(IMGUI_IMPL_WEBGPU_BACKEND_DAWN) == defined(IMGUI_IMPL_WEBGPU_BACKEND_WGPU)\n    #error exactly one of IMGUI_IMPL_WEBGPU_BACKEND_DAWN or IMGUI_IMPL_WEBGPU_BACKEND_WGPU must be defined!\n    #endif\n#else\n    #if defined(IMGUI_IMPL_WEBGPU_BACKEND_DAWN) || defined(IMGUI_IMPL_WEBGPU_BACKEND_WGPU)\n    #error neither IMGUI_IMPL_WEBGPU_BACKEND_DAWN nor IMGUI_IMPL_WEBGPU_BACKEND_WGPU may be defined if targeting emscripten!\n    #endif\n#endif\n\n#ifndef IMGUI_DISABLE\n#include \"imgui_impl_wgpu.h\"\n]=])\n      set(_aurora_imgui_wgpu_new [=[\n#ifndef IMGUI_DISABLE\n#include \"imgui_impl_wgpu.h\"\n\n#if defined(IMGUI_IMPL_WEBGPU_BACKEND_DAWN) == defined(IMGUI_IMPL_WEBGPU_BACKEND_WGPU)\n#error Exactly one of IMGUI_IMPL_WEBGPU_BACKEND_DAWN or IMGUI_IMPL_WEBGPU_BACKEND_WGPU must be defined!\n#endif\n]=])\n      string(FIND \"${_aurora_imgui_wgpu_source}\" \"${_aurora_imgui_wgpu_old}\" _aurora_imgui_wgpu_anchor)\n      if (_aurora_imgui_wgpu_anchor EQUAL -1)\n        message(FATAL_ERROR \"Dear ImGui WebGPU Emscripten compatibility anchor not found\")\n      endif ()\n      string(REPLACE \"${_aurora_imgui_wgpu_old}\" \"${_aurora_imgui_wgpu_new}\"\n        _aurora_imgui_wgpu_source \"${_aurora_imgui_wgpu_source}\")\n      file(WRITE \"${_aurora_imgui_wgpu_cpp}\" \"${_aurora_imgui_wgpu_source}\")\n      unset(_aurora_imgui_wgpu_anchor)\n      unset(_aurora_imgui_wgpu_old)\n      unset(_aurora_imgui_wgpu_new)\n      unset(_aurora_imgui_wgpu_source)\n      unset(_aurora_imgui_wgpu_cpp)\n    endif ()\n\n    add_library(imgui STATIC\n""",
     )
 
-    imgui_cpp = aurora / "lib" / "imgui.cpp"
-    replace_once(
-        imgui_cpp,
-        """#define IMGUI_IMPL_WEBGPU_BACKEND_DAWN\n#include \"backends/imgui_impl_sdl3.h\"\n""",
-        """#ifndef __EMSCRIPTEN__\n#define IMGUI_IMPL_WEBGPU_BACKEND_DAWN\n#endif\n#include \"backends/imgui_impl_sdl3.h\"\n""",
-    )
-
-    print("Adapted Aurora ImGui WebGPU backend selection for Emscripten")
+    print("Backported Dear ImGui Emdawnwebgpu compatibility into Aurora configure")
     return 0
 
 
