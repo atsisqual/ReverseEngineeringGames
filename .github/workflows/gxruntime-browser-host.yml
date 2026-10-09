@@ -62,7 +62,7 @@ jobs:
             -DGXRUNTIME_ENABLE_AURORA_RECOMP=OFF \
             -DAURORA_ENABLE_RMLUI=OFF \
             -DAURORA_SDL3_LINKAGE=static \
-            -DAURORA_EMSCRIPTEN_ASYNCIFY=OFF \
+            -DAURORA_EMSCRIPTEN_ASYNCIFY=ON \
             -DGXRUNTIME_BROWSER_SMOKE_LINK_O0=ON
           IMGUI_WGPU="$RUNNER_TEMP/gxruntime-web/_deps/imgui-src/backends/imgui_impl_wgpu.cpp"
           grep -q 'Exactly one of IMGUI_IMPL_WEBGPU_BACKEND_DAWN or IMGUI_IMPL_WEBGPU_BACKEND_WGPU must be defined' "$IMGUI_WGPU"
@@ -104,7 +104,7 @@ jobs:
             exit "$status"
           fi
           tail -n 60 "$LOG"
-      - name: Link real browser smoke executable at O0 without Asyncify
+      - name: Link real browser smoke executable at O0 with Asyncify
         shell: bash
         run: |
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
