@@ -1,0 +1,19 @@
+{
+  "id": "gcwii-gxruntime-browser-host",
+  "platforms": ["gamecube", "wii"],
+  "status": "first-pinned-gxruntime-browser-host-patch",
+  "upstream": {
+    "repo": "https://github.com/aharonahdoot/GXRuntime.git",
+    "commit": "8a47b0e8ea7dfc39014a4cff4f7895d88494a611"
+  },
+  "emscripten": "6.0.12",
+  "changes": [
+    "emdawnwebgpu-provider",
+    "browser-webgpu-backend-selection",
+    "canvas-surface-source",
+    "exclude-native-dawn-runtime",
+    "asyncify-adapter-wait-bridge",
+    "asyncify-device-wait-bridge"
+  ],
+  "validation_target": "aurora_core"
+}
