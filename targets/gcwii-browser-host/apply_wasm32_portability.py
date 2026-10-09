@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Apply wasm32 size-safety fixes to pinned Aurora sources.
 
-Aurora calculates DDS payload sizes in uint64_t, while size_t is 32-bit in the
-wasm32 Emscripten ABI. Validate the payload against both the input span and the
-addressable size_t range before narrowing for ByteBuffer/memcpy.
+Aurora calculates several texture payload sizes in uint64_t, while size_t is
+32-bit in the wasm32 Emscripten ABI. Validate sizes before narrowing and keep
+all subsequent buffer offsets in size_t once the payload is proven addressable.
 """
 
 from __future__ import annotations
@@ -35,7 +35,9 @@ def main() -> int:
     if actual != PINNED_GXRUNTIME:
         raise SystemExit(f"GXRuntime pin mismatch: expected {PINNED_GXRUNTIME}, got {actual}")
 
-    dds = root / "graphics" / "aurora" / "lib" / "gfx" / "dds_io.cpp"
+    gfx = root / "graphics" / "aurora" / "lib" / "gfx"
+
+    dds = gfx / "dds_io.cpp"
     replace_once(
         dds,
         """#include <filesystem>\n#include <fstream>\n""",
@@ -47,7 +49,24 @@ def main() -> int:
         """  const auto expectedSize = calc_texture_size(parsedLayout->format, header->width, header->height, *mipCount);\n  if (expectedSize == 0 || parsedLayout->dataOffset > bytes.size() ||\n      expectedSize > static_cast<uint64_t>(bytes.size() - parsedLayout->dataOffset) ||\n      expectedSize > static_cast<uint64_t>(std::numeric_limits<size_t>::max())) {\n    return std::nullopt;\n  }\n\n  const auto dataSize = static_cast<size_t>(expectedSize);\n  ByteBuffer data{dataSize};\n  std::memcpy(data.data(), bytes.data() + parsedLayout->dataOffset, dataSize);\n""",
     )
 
-    print("Applied wasm32 DDS size-safety fix")
+    replacement = gfx / "texture_replacement.cpp"
+    replace_once(
+        replacement,
+        """#include <filesystem>\n#include <list>\n""",
+        """#include <filesystem>\n#include <limits>\n#include <list>\n""",
+    )
+    replace_once(
+        replacement,
+        """  const uint64_t n = aurora::gfx::calc_texture_size(base->format, base->width, base->height, mips);\n  if (n == 0) {\n    return std::nullopt;\n  }\n\n  aurora::ByteBuffer blob{n};\n  uint8_t* const dst = blob.data();\n  uint64_t o = 0;\n  const auto append = [&](const aurora::ByteBuffer& d) noexcept -> bool {\n    if (o + d.size() > n) {\n      return false;\n    }\n    std::memcpy(dst + o, d.data(), d.size());\n    o += d.size();\n    return true;\n  };\n""",
+        """  const uint64_t n = aurora::gfx::calc_texture_size(base->format, base->width, base->height, mips);\n  if (n == 0 || n > static_cast<uint64_t>(std::numeric_limits<size_t>::max())) {\n    return std::nullopt;\n  }\n\n  const auto blobSize = static_cast<size_t>(n);\n  aurora::ByteBuffer blob{blobSize};\n  uint8_t* const dst = blob.data();\n  size_t o = 0;\n  const auto append = [&](const aurora::ByteBuffer& d) noexcept -> bool {\n    if (o > blobSize || d.size() > blobSize - o) {\n      return false;\n    }\n    std::memcpy(dst + o, d.data(), d.size());\n    o += d.size();\n    return true;\n  };\n""",
+    )
+    replace_once(
+        replacement,
+        """  if (o != n) {\n""",
+        """  if (o != blobSize) {\n""",
+    )
+
+    print("Applied wasm32 texture size-safety fixes")
     return 0
 
 
