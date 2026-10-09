@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ReverseEngineeringGames Web Target Probe</title>
+  <style>
+    body { font: 16px/1.45 system-ui, sans-serif; max-width: 900px; margin: 3rem auto; padding: 0 1rem; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; border-bottom: 1px solid #ccc; padding: .6rem; }
+    code { background: #eee; padding: .1rem .3rem; }
+    .ok { font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1>Web target probe</h1>
+  <p>This page checks browser capabilities that commonly matter to native/recompiled game ports.</p>
+  <table>
+    <thead><tr><th>Capability</th><th>Result</th><th>Notes</th></tr></thead>
+    <tbody id="results"></tbody>
+  </table>
+  <p id="isolation"></p>
+  <script type="module" src="./probe.js"></script>
+</body>
+</html>
