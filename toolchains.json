@@ -3,112 +3,181 @@
     {
       "id": "emsdk",
       "name": "Emscripten SDK",
-      "groups": ["web", "n64-web"],
+      "groups": [
+        "web",
+        "n64-web"
+      ],
       "repo": "https://github.com/emscripten-core/emsdk.git",
       "purpose": "Clang/LLVM-based C/C++ to WebAssembly toolchain and browser runtime glue"
     },
     {
       "id": "binaryen",
       "name": "Binaryen",
-      "groups": ["web"],
+      "groups": [
+        "web"
+      ],
       "repo": "https://github.com/WebAssembly/binaryen.git",
       "purpose": "WebAssembly optimizer/toolchain including wasm-opt"
     },
     {
       "id": "wabt",
       "name": "WABT",
-      "groups": ["web"],
+      "groups": [
+        "web"
+      ],
       "repo": "https://github.com/WebAssembly/wabt.git",
       "purpose": "WebAssembly inspection, validation and conversion tools"
     },
     {
       "id": "objdiff",
       "name": "objdiff",
-      "groups": ["analysis", "n64", "gcwii", "ps"],
+      "groups": [
+        "analysis",
+        "n64",
+        "gcwii",
+        "ps"
+      ],
       "repo": "https://github.com/encounter/objdiff.git",
       "purpose": "Object-file diffing and matching-decomp verification across many console architectures"
     },
     {
       "id": "decomp-toolkit",
       "name": "decomp-toolkit",
-      "groups": ["analysis", "gcwii"],
+      "groups": [
+        "analysis",
+        "gcwii"
+      ],
       "repo": "https://github.com/encounter/decomp-toolkit.git",
       "purpose": "GameCube/Wii disc, DOL, REL and matching-decomp analysis tooling"
     },
     {
       "id": "n64recomp",
       "name": "N64Recomp",
-      "groups": ["n64", "n64-web"],
+      "groups": [
+        "n64",
+        "n64-web"
+      ],
       "repo": "https://github.com/N64Recomp/N64Recomp.git",
       "purpose": "Static MIPS/N64 binary recompiler that emits portable C"
     },
     {
       "id": "n64-modern-runtime",
       "name": "N64ModernRuntime",
-      "groups": ["n64", "n64-web"],
+      "groups": [
+        "n64",
+        "n64-web"
+      ],
       "repo": "https://github.com/N64Recomp/N64ModernRuntime.git",
       "purpose": "Runtime foundation for N64 recompilations and traditional ports; browser renderer integration is still project work"
     },
     {
       "id": "recomp-frontend",
       "name": "RecompFrontend",
-      "groups": ["n64"],
+      "groups": [
+        "n64"
+      ],
       "repo": "https://github.com/N64Recomp/RecompFrontend.git",
       "purpose": "Menus and input handling library used by N64: Recompiled projects"
     },
     {
       "id": "n64wasm",
       "name": "N64Wasm",
-      "groups": ["n64-web", "emulation", "browser-reference"],
+      "groups": [
+        "n64-web",
+        "emulation",
+        "browser-reference"
+      ],
       "repo": "https://github.com/nbarkhina/N64Wasm.git",
       "purpose": "Browser N64 emulator compiled to WebAssembly; practical fallback when a static recomp browser runtime is unavailable"
     },
     {
       "id": "recomp-kit",
       "name": "recomp-kit",
-      "groups": ["pc", "browser-reference"],
+      "groups": [
+        "pc",
+        "browser-reference"
+      ],
       "repo": "https://github.com/veritr1x/recomp-kit.git",
       "purpose": "Current static-recomp browser reference for 32-bit x86 Windows games using Emscripten, WebGPU, pthreads and WasmFS; review upstream licensing before reusing code"
     },
     {
       "id": "ogre-battle-64-recomp",
       "name": "Ogre Battle 64 Recomp",
-      "groups": ["n64-web-reference", "game-reference", "browser-reference"],
+      "groups": [
+        "n64-web-reference",
+        "game-reference",
+        "browser-reference"
+      ],
       "repo": "https://github.com/lfarroco/ogre-battle-64-recomp.git",
       "purpose": "Real N64Recomp browser reference: Emscripten runtime patches, pthreads, input/audio/IDBFS and a WebGL2 renderer prototype"
     },
     {
       "id": "dolrecomp",
       "name": "DolRecomp",
-      "groups": ["gcwii"],
+      "groups": [
+        "gcwii"
+      ],
       "repo": "https://github.com/ExpansionPak/DolRecomp.git",
       "purpose": "Static PowerPC recompiler for GameCube/Wii (plus early Wii U support)"
     },
     {
       "id": "moderngekko",
       "name": "ModernGekko",
-      "groups": ["gcwii"],
+      "groups": [
+        "gcwii"
+      ],
       "repo": "https://github.com/ExpansionPak/ModernGekko.git",
       "purpose": "GameCube/Wii recompilation runtime; useful reference even when a browser runtime needs separate adaptation"
     },
     {
+      "id": "gxruntime",
+      "name": "GXRuntime",
+      "groups": [
+        "gcwii",
+        "gcwii-web-candidate",
+        "runtime",
+        "oracle-reference"
+      ],
+      "repo": "https://github.com/aharonahdoot/GXRuntime.git",
+      "purpose": "Game-agnostic GameCube static-recomp runtime with Dolphin-validated PPC semantics, devices and GX renderer; current public host is desktop/Aurora, making it a strong browser-port candidate"
+    },
+    {
+      "id": "recompcore",
+      "name": "RecompCore",
+      "groups": [
+        "gcwii",
+        "analysis",
+        "oracle-reference"
+      ],
+      "repo": "https://github.com/aharonahdoot/RecompCore.git",
+      "purpose": "Dolphin-derived static-recomp runtime and correctness oracle with interpreter fallback/lockstep validation for GameCube/Wii recompilation work"
+    },
+    {
       "id": "reccmp",
       "name": "reccmp",
-      "groups": ["analysis", "pc"],
+      "groups": [
+        "analysis",
+        "pc"
+      ],
       "repo": "https://github.com/isledecomp/reccmp.git",
       "purpose": "Matching-decomp verification, especially older 32-bit MSVC x86 projects"
     },
     {
       "id": "decomp-goal-harness",
       "name": "decomp-goal-harness",
-      "groups": ["agents", "analysis"],
+      "groups": [
+        "agents",
+        "analysis"
+      ],
       "repo": "https://github.com/Muhtasham/decomp-goal-harness.git",
       "purpose": "Verifier-guided task harness for Codex-style matching-decomp agents"
     },
     {
       "id": "ghidra",
       "name": "Ghidra",
-      "groups": ["analysis"],
+      "groups": [
+        "analysis"
+      ],
       "repo": "https://github.com/NationalSecurityAgency/ghidra.git",
       "purpose": "General-purpose disassembly/decompilation and binary analysis"
     }

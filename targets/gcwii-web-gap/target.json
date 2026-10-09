@@ -1,0 +1,25 @@
+{
+  "id": "gcwii-web-gap",
+  "platforms": [
+    "gamecube",
+    "wii"
+  ],
+  "status": "static-recomp-and-webgpu-renderer-core-ready-browser-platform-host-not-yet-publicly-complete",
+  "dolrecomp": {
+    "repo": "https://github.com/ExpansionPak/DolRecomp.git",
+    "commit": "c876e2b9e022e084aa9a690fe15e2ad79a0706cd"
+  },
+  "moderngekko": {
+    "repo": "https://github.com/ExpansionPak/ModernGekko.git",
+    "commit": "a2e4e2b026a68d4848f20ebf16f0e0ddeb573957"
+  },
+  "gxruntime": {
+    "repo": "https://github.com/aharonahdoot/GXRuntime.git",
+    "commit": "8a47b0e8ea7dfc39014a4cff4f7895d88494a611"
+  },
+  "expected_browser_gaps": [
+    "emscripten-build",
+    "browser-surface",
+    "cross-origin-isolation"
+  ]
+}
