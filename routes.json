@@ -1,0 +1,110 @@
+{
+  "aliases": {
+    "gc": "gamecube",
+    "gcn": "gamecube",
+    "psx": "ps1",
+    "playstation": "ps1",
+    "playstation1": "ps1",
+    "playstation2": "ps2",
+    "playstation-portable": "psp",
+    "gb": "gba",
+    "gbc": "gba",
+    "megadrive": "genesis",
+    "mega-drive": "genesis",
+    "win32": "pc32",
+    "windows32": "pc32"
+  },
+  "routes": {
+    "source": {
+      "primary": "direct-source-to-wasm",
+      "status": "preferred",
+      "tools": ["emsdk", "binaryen", "wabt"],
+      "fallback": [],
+      "summary": "Portable C/C++/Rust or matching-decomp source -> Emscripten/LLVM -> WebAssembly."
+    },
+    "n64": {
+      "primary": "static-recompilation",
+      "status": "real-browser-reference-partial",
+      "tools": ["n64recomp", "n64-modern-runtime", "ogre-battle-64-recomp"],
+      "fallback": ["n64wasm"],
+      "summary": "Prefer N64Recomp/decomp. Ogre Battle 64 proves a real Emscripten path; renderer coverage is still game/microcode-specific."
+    },
+    "gamecube": {
+      "primary": "static-recompilation-candidate",
+      "status": "browser-host-gap",
+      "tools": ["dolrecomp", "moderngekko", "gxruntime", "recompcore"],
+      "fallback": [],
+      "summary": "CPU/AOT and WebGPU renderer core exist; Emscripten browser platform/surface host is the current gap."
+    },
+    "wii": {
+      "primary": "static-recompilation-candidate",
+      "status": "browser-host-gap",
+      "tools": ["dolrecomp", "moderngekko", "gxruntime", "recompcore"],
+      "fallback": [],
+      "summary": "Same core path as GameCube; browser platform integration remains engineering work."
+    },
+    "ps2": {
+      "primary": "web-emulation",
+      "status": "official-experimental-browser",
+      "tools": ["play-ps2"],
+      "fallback": [],
+      "summary": "Play! officially builds with Emscripten and ships an experimental browser frontend; no external BIOS is required because it uses HLE BIOS."
+    },
+    "psp": {
+      "primary": "web-emulation",
+      "status": "community-browser-reference",
+      "tools": ["ppsspp-web"],
+      "fallback": [],
+      "summary": "Community PPSSPP WebAssembly/Emscripten fork with a browser shell and COOP/COEP server; not an official PPSSPP release."
+    },
+    "ps1": {
+      "primary": "libretro-web-emulation",
+      "status": "browser-framework-ready",
+      "tools": ["retroarch-web", "beetle-psx-libretro"],
+      "fallback": [],
+      "summary": "RetroArch has an official Emscripten frontend. Use a PS1 libretro core that supports the web target; Beetle PSX has Emscripten-specific code paths."
+    },
+    "nes": {
+      "primary": "libretro-web-emulation",
+      "status": "browser-framework-ready",
+      "tools": ["retroarch-web"],
+      "fallback": [],
+      "summary": "RetroArch Web Player + an Emscripten-compatible NES core such as FCEUmm."
+    },
+    "snes": {
+      "primary": "libretro-web-emulation",
+      "status": "browser-framework-ready",
+      "tools": ["retroarch-web"],
+      "fallback": [],
+      "summary": "RetroArch Web Player + an Emscripten-compatible SNES core."
+    },
+    "gba": {
+      "primary": "libretro-web-emulation",
+      "status": "browser-framework-ready",
+      "tools": ["retroarch-web"],
+      "fallback": [],
+      "summary": "RetroArch Web Player + an Emscripten-compatible GB/GBC/GBA core such as mGBA."
+    },
+    "genesis": {
+      "primary": "libretro-web-emulation",
+      "status": "browser-framework-ready",
+      "tools": ["retroarch-web"],
+      "fallback": [],
+      "summary": "RetroArch Web Player + an Emscripten-compatible Genesis/Mega Drive core."
+    },
+    "pc32": {
+      "primary": "static-recompilation",
+      "status": "real-browser-reference",
+      "tools": ["recomp-kit", "reccmp"],
+      "fallback": [],
+      "summary": "For older 32-bit Windows games, use matching-decomp/recomp-kit where compatible; recomp-kit demonstrates Emscripten/WebGPU/pthreads/WasmFS."
+    },
+    "other": {
+      "primary": "research-first",
+      "status": "platform-dependent",
+      "tools": ["ghidra", "objdiff", "emsdk"],
+      "fallback": ["retroarch-web"],
+      "summary": "Look for source/decomp/static-recomp first, then a mature emulator core with an Emscripten/browser target."
+    }
+  }
+}

@@ -1,269 +1,113 @@
 #!/usr/bin/env python3
-"""ReverseEngineeringGames toolchain helper.
-
-This program only manages open-source tooling/scaffolding. It never downloads
-commercial game content, firmware, keys, proprietary SDKs, or compiler binaries.
-"""
-
+"""Toolchain manager and route resolver for reverse-engineered browser game ports."""
 from __future__ import annotations
-
-import argparse
-import json
-import os
-import platform
-import shutil
-import subprocess
+import argparse, json, os, platform, shutil, subprocess
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-REGISTRY = ROOT / "toolchains.json"
-TOOLS_DIR = ROOT / ".tools"
-PORTS_DIR = ROOT / "ports"
+ROOT=Path(__file__).resolve().parent
+REGISTRY=ROOT/'toolchains.json'; ROUTES=ROOT/'routes.json'; TOOLS=ROOT/'.tools'; PORTS=ROOT/'ports'
+PLATFORMS={
+ 'source':'Portable source / matching decomp -> Emscripten',
+ 'n64':'N64Recomp/matching decomp first; N64Wasm fallback',
+ 'gamecube':'DolRecomp + GXRuntime/ModernGekko; browser host still engineering work',
+ 'wii':'DolRecomp + GXRuntime/ModernGekko; browser host still engineering work',
+ 'ps1':'RetroArch Emscripten + browser-capable PS1 core, or source/decomp',
+ 'ps2':'Play! official experimental browser build; source/decomp when available',
+ 'psp':'PPSSPP WebAssembly community route; source/decomp when available',
+ 'nes':'RetroArch Web Player + compatible NES core','snes':'RetroArch Web Player + compatible SNES core',
+ 'gba':'RetroArch Web Player + compatible GB/GBC/GBA core','genesis':'RetroArch Web Player + compatible Sega core',
+ 'pc':'Portable/matching decomp -> Emscripten','pc32':'Older Win32: matching decomp/static recomp',
+ 'other':'Research first; source/recomp if available, emulator-core fallback otherwise'}
+REQUIRED=['git','python','cmake','ninja','clang','node']; WEB_REQUIRED=['emcc','em++']
 
-PLATFORMS = {
-    "source": "Portable source / matching decomp -> Emscripten",
-    "n64": "N64Recomp or matching decomp -> browser runtime -> Emscripten",
-    "gamecube": "DolRecomp/decomp-toolkit -> browser runtime -> Emscripten",
-    "wii": "DolRecomp/decomp-toolkit -> browser runtime -> Emscripten",
-    "ps1": "Matching decomp/source -> Emscripten",
-    "ps2": "Matching decomp/source -> Emscripten",
-    "psp": "Matching decomp/source -> Emscripten",
-    "pc": "Portable/matching decomp -> Emscripten",
-    "other": "Research first; source/recomp if available, emulator-core fallback otherwise",
-}
+def load_json(path): return json.loads(path.read_text(encoding='utf-8'))
+def tools():
+ data=load_json(REGISTRY); out=data.get('tools',[])
+ if not isinstance(out,list): raise SystemExit("toolchains.json: 'tools' must be an array")
+ return out
+def route_data():
+ data=load_json(ROUTES)
+ if not isinstance(data.get('routes'),dict) or not isinstance(data.get('aliases'),dict): raise SystemExit("routes.json must contain routes and aliases")
+ return data
+def resolve_route(name):
+ data=route_data(); requested=name.strip().lower(); canonical=data['aliases'].get(requested,requested)
+ if canonical not in data['routes']: canonical='other'
+ out=dict(data['routes'][canonical]); out.update(platform=canonical,requested=requested); return out
 
-REQUIRED = ["git", "python", "cmake", "ninja", "clang", "node"]
-WEB_REQUIRED = ["emcc", "em++"]
+def run(cmd,cwd=None): print('+',' '.join(cmd)); subprocess.run(cmd,cwd=cwd,check=True)
+def which(name):
+ names=[name]
+ if os.name=='nt' and name=='python': names=['python','py']
+ if os.name=='nt' and name=='ninja': names=['ninja','ninja.exe']
+ return next((p for n in names if (p:=shutil.which(n))),None)
 
+def cmd_list(_):
+ groups={}
+ for t in tools():
+  for g in t['groups']: groups.setdefault(g,[]).append(t['id'])
+ print('Groups:')
+ for g in sorted(groups): print(f'  {g:22} {", ".join(groups[g])}')
+ print('\nTools:')
+ for t in tools(): print(f"  {t['id']:24} {t['purpose']}")
+ return 0
+def cmd_route(a):
+ r=resolve_route(a.platform)
+ if a.json: print(json.dumps(r,indent=2)); return 0
+ print(f"Platform: {r['platform']}")
+ if r['requested']!=r['platform']: print(f"Requested: {r['requested']}")
+ print(f"Primary:  {r['primary']}\nStatus:   {r['status']}\nTools:    {', '.join(r.get('tools',[])) or '-'}\nFallback: {', '.join(r.get('fallback',[])) or '-'}\n\n{r['summary']}")
+ return 0
+def cmd_doctor(a):
+ print(f'Host: {platform.system()} {platform.machine()} / Python {platform.python_version()}'); missing=[]
+ for n in REQUIRED:
+  p=which(n); print(f"{'OK' if p else 'MISSING':7} {n:8} {p or ''}"); missing += ([] if p else [n])
+ print('\nWeb target:'); web=[]
+ for n in WEB_REQUIRED:
+  p=which(n); print(f"{'OK' if p else 'MISSING':7} {n:8} {p or ''}"); web += ([] if p else [n])
+ if web: print('\nEmscripten is not active. Fetch `web`, install/activate emsdk, then rerun doctor.')
+ return 1 if a.strict and (missing or web) else 0
+def selected(selector):
+ ts=tools()
+ if selector=='all': return ts
+ exact=[t for t in ts if t['id']==selector]
+ if exact: return exact
+ grouped=[t for t in ts if selector in t['groups']]
+ if grouped: return grouped
+ raise SystemExit(f"Unknown group/tool '{selector}'. Run `python portctl.py list`.")
+def cmd_fetch(a):
+ TOOLS.mkdir(exist_ok=True)
+ for t in selected(a.selector):
+  dst=TOOLS/t['id']
+  if dst.exists():
+   if not (dst/'.git').exists(): print(f"SKIP {t['id']}: {dst} is not a git clone"); continue
+   if a.update:
+    if a.dry_run: print(f"WOULD UPDATE {t['id']} in {dst}")
+    else: run(['git','fetch','--prune'],dst); run(['git','pull','--ff-only'],dst)
+   else: print(f"EXISTS {t['id']} -> {dst}")
+   continue
+  cmd=['git','clone','--recurse-submodules']+(['--depth',str(a.depth)] if a.depth else [])+[t['repo'],str(dst)]
+  print('WOULD RUN',' '.join(cmd)) if a.dry_run else run(cmd)
+ return 0
+def render_readme(name,pid):
+ r=resolve_route(pid if pid in route_data()['routes'] else 'other')
+ return f'''# {name}\n\nPlatform: `{pid}`\n\nRoute: {PLATFORMS[pid]}\n\nRegistry: `{r['primary']}` ({r['status']})  \nTools: {', '.join(r.get('tools',[])) or 'research first'}  \nFallback: {', '.join(r.get('fallback',[])) or 'none recorded'}\n\n## Inputs\n\nPut user-owned original material under `original/`. Do not commit ROMs, disc images, keys, firmware, proprietary SDK files or extracted commercial assets.\n\n## Milestones\n\n- [ ] Identify exact revision and hash input.\n- [ ] Establish deterministic reference behavior.\n- [ ] Pick source/decomp/static-recomp/emulator route.\n- [ ] Pin upstream SHAs in `TOOLCHAIN.lock`.\n- [ ] Produce reference/native build.\n- [ ] Compile CPU/game/core code to WebAssembly.\n- [ ] Adapt renderer, audio, input, filesystem and networking.\n- [ ] Add deterministic state/frame validation and browser smoke tests.\n\nRead `../../docs/WEB_TARGET.md`.\n'''
+def cmd_new(a):
+ pid=a.platform.lower(); dst=PORTS/a.name
+ if dst.exists(): raise SystemExit(f'{dst} already exists')
+ for d in ['original','src','web','tests']: (dst/d).mkdir(parents=True,exist_ok=True)
+ (dst/'README.md').write_text(render_readme(a.name,pid),encoding='utf-8')
+ (dst/'.gitignore').write_text('original/\nroms/\niso/\nassets-original/\nbuild/\nbuild-web/\ndist/\n*.iso\n*.wbfs\n*.rvz\n*.wad\n*.rom\n*.z64\n*.n64\n*.v64\n',encoding='utf-8')
+ (dst/'TOOLCHAIN.lock').write_text('# Record exact upstream repo URL + commit SHA here once chosen.\n',encoding='utf-8')
+ print(f'Created {dst}'); return 0
 
-def load_registry() -> list[dict]:
-    data = json.loads(REGISTRY.read_text(encoding="utf-8"))
-    tools = data.get("tools", [])
-    if not isinstance(tools, list):
-        raise SystemExit("toolchains.json: 'tools' must be an array")
-    return tools
-
-
-def run(cmd: list[str], cwd: Path | None = None) -> None:
-    print("+", " ".join(cmd))
-    subprocess.run(cmd, cwd=cwd, check=True)
-
-
-def command_path(name: str) -> str | None:
-    candidates = [name]
-    if os.name == "nt":
-        if name == "python":
-            candidates = ["python", "py"]
-        if name == "ninja":
-            candidates = ["ninja", "ninja.exe"]
-    for candidate in candidates:
-        value = shutil.which(candidate)
-        if value:
-            return value
-    return None
-
-
-def cmd_list(args: argparse.Namespace) -> int:
-    tools = load_registry()
-    groups: dict[str, list[str]] = {}
-    for tool in tools:
-        for group in tool["groups"]:
-            groups.setdefault(group, []).append(tool["id"])
-
-    print("Groups:")
-    for group in sorted(groups):
-        print(f"  {group:10} {', '.join(groups[group])}")
-
-    print("\nTools:")
-    for tool in tools:
-        print(f"  {tool['id']:22} {tool['purpose']}")
-    return 0
-
-
-def cmd_doctor(args: argparse.Namespace) -> int:
-    print(f"Host: {platform.system()} {platform.machine()} / Python {platform.python_version()}")
-    missing: list[str] = []
-
-    for name in REQUIRED:
-        found = command_path(name)
-        print(f"{'OK' if found else 'MISSING':7} {name:8} {found or ''}")
-        if not found:
-            missing.append(name)
-
-    print("\nWeb target:")
-    web_missing = []
-    for name in WEB_REQUIRED:
-        found = command_path(name)
-        print(f"{'OK' if found else 'MISSING':7} {name:8} {found or ''}")
-        if not found:
-            web_missing.append(name)
-
-    if web_missing:
-        print("\nEmscripten is not active in this shell.")
-        print("Fetch emsdk with `python portctl.py fetch web`, then install/activate an SDK using upstream emsdk instructions.")
-
-    if args.strict and (missing or web_missing):
-        return 1
-    return 0
-
-
-def selected_tools(selector: str) -> list[dict]:
-    tools = load_registry()
-    if selector == "all":
-        return tools
-
-    exact = [tool for tool in tools if tool["id"] == selector]
-    if exact:
-        return exact
-
-    grouped = [tool for tool in tools if selector in tool["groups"]]
-    if grouped:
-        return grouped
-
-    known_groups = sorted({g for tool in tools for g in tool["groups"]})
-    known_tools = sorted(tool["id"] for tool in tools)
-    raise SystemExit(
-        f"Unknown group/tool '{selector}'. Groups: {', '.join(known_groups)}. "
-        f"Tools: {', '.join(known_tools)}"
-    )
-
-
-def cmd_fetch(args: argparse.Namespace) -> int:
-    TOOLS_DIR.mkdir(exist_ok=True)
-    for tool in selected_tools(args.selector):
-        target = TOOLS_DIR / tool["id"]
-        if target.exists():
-            if not (target / ".git").exists():
-                print(f"SKIP {tool['id']}: {target} exists but is not a git clone")
-                continue
-            if args.update:
-                if args.dry_run:
-                    print(f"WOULD UPDATE {tool['id']} in {target}")
-                else:
-                    run(["git", "fetch", "--prune"], cwd=target)
-                    run(["git", "pull", "--ff-only"], cwd=target)
-            else:
-                print(f"EXISTS {tool['id']} -> {target}")
-            continue
-
-        cmd = ["git", "clone", "--recurse-submodules"]
-        if args.depth:
-            cmd += ["--depth", str(args.depth)]
-        cmd += [tool["repo"], str(target)]
-
-        if args.dry_run:
-            print("WOULD RUN", " ".join(cmd))
-        else:
-            run(cmd)
-    return 0
-
-
-def render_port_readme(name: str, platform_id: str) -> str:
-    route = PLATFORMS[platform_id]
-    return f"""# {name}
-
-Platform: `{platform_id}`
-
-Route: {route}
-
-## Inputs
-
-Put user-owned original material under `original/`. That directory is ignored by Git.
-
-Do not commit ROMs, disc images, keys, firmware, proprietary SDK files, extracted commercial assets or proprietary compilers.
-
-## Milestones
-
-- [ ] Identify exact game revision and hash the user-owned input.
-- [ ] Establish deterministic native/emulated reference behavior.
-- [ ] Pick source/decomp/static-recomp/emulator route.
-- [ ] Pin toolchain SHAs in `TOOLCHAIN.lock`.
-- [ ] Produce a native build before touching browser-specific code.
-- [ ] Compile CPU/game code to WebAssembly.
-- [ ] Adapt renderer to WebGL2 and/or WebGPU.
-- [ ] Adapt audio/input/filesystem/networking.
-- [ ] Add deterministic frame/state validation.
-- [ ] Add browser smoke test and document required HTTP headers.
-
-Read `../../docs/WEB_TARGET.md` before implementing the browser host.
-"""
-
-
-def cmd_new(args: argparse.Namespace) -> int:
-    platform_id = args.platform.lower()
-    if platform_id not in PLATFORMS:
-        raise SystemExit(f"Unsupported platform id. Choose one of: {', '.join(PLATFORMS)}")
-
-    target = PORTS_DIR / args.name
-    if target.exists():
-        raise SystemExit(f"{target} already exists")
-
-    (target / "original").mkdir(parents=True)
-    (target / "src").mkdir()
-    (target / "web").mkdir()
-    (target / "tests").mkdir()
-
-    (target / "README.md").write_text(render_port_readme(args.name, platform_id), encoding="utf-8")
-    (target / ".gitignore").write_text(
-        """original/
-roms/
-iso/
-assets-original/
-build/
-build-web/
-dist/
-*.iso
-*.wbfs
-*.rvz
-*.wad
-*.rom
-*.z64
-*.n64
-*.v64
-""",
-        encoding="utf-8",
-    )
-    (target / "TOOLCHAIN.lock").write_text(
-        "# Record exact upstream repo URL + commit SHA here once chosen.\n",
-        encoding="utf-8",
-    )
-    print(f"Created {target}")
-    return 0
-
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="portctl",
-        description="Toolchain manager/scaffolder for reverse-engineered browser game ports.",
-    )
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    p_list = sub.add_parser("list", help="List tool groups and tools")
-    p_list.set_defaults(func=cmd_list)
-
-    p_doctor = sub.add_parser("doctor", help="Check host/browser build prerequisites")
-    p_doctor.add_argument("--strict", action="store_true", help="Return non-zero if anything is missing")
-    p_doctor.set_defaults(func=cmd_doctor)
-
-    p_fetch = sub.add_parser("fetch", help="Clone/update an upstream tool or group under .tools/")
-    p_fetch.add_argument("selector", help="Group (web/n64/gcwii/analysis/agents/pc/all) or tool id")
-    p_fetch.add_argument("--update", action="store_true", help="Fast-forward existing clones")
-    p_fetch.add_argument("--dry-run", action="store_true", help="Print git commands without running them")
-    p_fetch.add_argument("--depth", type=int, default=0, help="Optional shallow clone depth")
-    p_fetch.set_defaults(func=cmd_fetch)
-
-    p_new = sub.add_parser("new", help="Scaffold a new per-game port workspace")
-    p_new.add_argument("name", help="Directory name under ports/")
-    p_new.add_argument("--platform", required=True, choices=sorted(PLATFORMS))
-    p_new.set_defaults(func=cmd_new)
-
-    return parser
-
-
-def main() -> int:
-    args = build_parser().parse_args()
-    return int(args.func(args))
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+def parser():
+ p=argparse.ArgumentParser(prog='portctl',description='Toolchain manager/scaffolder for reverse-engineered browser game ports.'); s=p.add_subparsers(dest='command',required=True)
+ q=s.add_parser('list'); q.set_defaults(func=cmd_list)
+ q=s.add_parser('route'); q.add_argument('platform'); q.add_argument('--json',action='store_true'); q.set_defaults(func=cmd_route)
+ q=s.add_parser('doctor'); q.add_argument('--strict',action='store_true'); q.set_defaults(func=cmd_doctor)
+ q=s.add_parser('fetch'); q.add_argument('selector'); q.add_argument('--update',action='store_true'); q.add_argument('--dry-run',action='store_true'); q.add_argument('--depth',type=int,default=0); q.set_defaults(func=cmd_fetch)
+ q=s.add_parser('new'); q.add_argument('name'); q.add_argument('--platform',required=True,choices=sorted(PLATFORMS)); q.set_defaults(func=cmd_new)
+ return p
+def main():
+ p=parser(); a=p.parse_args(); return int(a.func(a))
+if __name__=='__main__': raise SystemExit(main())
