@@ -62,7 +62,7 @@ jobs:
             -DGXRUNTIME_ENABLE_AURORA_RECOMP=OFF \
             -DAURORA_ENABLE_RMLUI=OFF \
             -DAURORA_SDL3_LINKAGE=static \
-            -DAURORA_EMSCRIPTEN_ASYNCIFY=ON \
+            -DAURORA_EMSCRIPTEN_ASYNCIFY=OFF \
             -DGXRUNTIME_BROWSER_SMOKE_LINK_O0=ON
           IMGUI_WGPU="$RUNNER_TEMP/gxruntime-web/_deps/imgui-src/backends/imgui_impl_wgpu.cpp"
           grep -q 'Exactly one of IMGUI_IMPL_WEBGPU_BACKEND_DAWN or IMGUI_IMPL_WEBGPU_BACKEND_WGPU must be defined' "$IMGUI_WGPU"
@@ -104,32 +104,32 @@ jobs:
             exit "$status"
           fi
           tail -n 60 "$LOG"
-      - name: Link real browser smoke executable at O0 with Asyncify
+      - name: Link O0 smoke and explicitly parse the raw Wasm
         shell: bash
         run: |
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           LOG="$RUNNER_TEMP/gxruntime-browser-smoke-build.log"
-          set +e
           cmake --build "$RUNNER_TEMP/gxruntime-web" --target gxruntime_browser_smoke -j2 >"$LOG" 2>&1
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ]; then
-            echo '--- first link/compiler errors ---'
-            grep -n -m 30 -E '(^|: )(fatal )?error:|FAILED:|undefined symbol' "$LOG" || true
-            echo '--- build tail ---'
-            tail -n 180 "$LOG"
-            WASM="$RUNNER_TEMP/gxruntime-web/gxruntime_browser_smoke.wasm"
-            if [ -s "$WASM" ]; then
-              echo '--- malformed Wasm location probe ---'
-              ls -lh "$WASM"
-              python targets/gcwii-browser-host/wasm_probe.py "$WASM" --offset 2771963 || true
-            else
-              echo 'No intermediate gxruntime_browser_smoke.wasm was left by the failed link.'
-            fi
-            exit "$status"
-          fi
           tail -n 80 "$LOG"
+          WASM="$RUNNER_TEMP/gxruntime-web/gxruntime_browser_smoke.wasm"
           for ext in html js wasm; do
             test -s "$RUNNER_TEMP/gxruntime-web/gxruntime_browser_smoke.$ext"
           done
           ls -lh "$RUNNER_TEMP/gxruntime-web/gxruntime_browser_smoke."{html,js,wasm}
+
+          echo '--- Binaryen parse/validation probe on raw O0 Wasm ---'
+          VALIDATE_LOG="$RUNNER_TEMP/raw-wasm-validate.log"
+          set +e
+          "$RUNNER_TEMP/emsdk/upstream/bin/wasm-opt" "$WASM" -O0 -o "$RUNNER_TEMP/gxruntime_browser_smoke.validated.wasm" >"$VALIDATE_LOG" 2>&1
+          validate_status=$?
+          set -e
+          if [ "$validate_status" -ne 0 ]; then
+            cat "$VALIDATE_LOG"
+            offset=$(grep -oE 'at 0:[0-9]+' "$VALIDATE_LOG" | head -n1 | cut -d: -f2 || true)
+            if [ -n "$offset" ]; then
+              echo "--- malformed Wasm location probe at $offset ---"
+              python targets/gcwii-browser-host/wasm_probe.py "$WASM" --offset "$offset" || true
+            fi
+            exit "$validate_status"
+          fi
+          ls -lh "$RUNNER_TEMP/gxruntime_browser_smoke.validated.wasm"
