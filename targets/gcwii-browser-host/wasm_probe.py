@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Locate a byte offset inside a WebAssembly binary without decoding opcodes.
 
-This is intentionally tiny and dependency-free. It parses the module section
-layout and, for the code section, function-body size records. That is enough to
-turn Binaryen errors such as `at 0:2771963` into a concrete section/body index
-for follow-up symbol isolation.
+The probe parses enough of the module structure to report the containing
+section, code-body ordinal, absolute function index, and (when the optional
+name section survived linking) the function name. No external Wasm tools are
+required.
 """
 
 from __future__ import annotations
@@ -47,12 +47,95 @@ def read_u32_leb(data: bytes, pos: int) -> tuple[int, int]:
             raise ValueError(f"invalid u32 LEB128 at {start}")
 
 
+def read_name(data: bytes, pos: int) -> tuple[str, int]:
+    size, pos = read_u32_leb(data, pos)
+    end = pos + size
+    if end > len(data):
+        raise ValueError("truncated name")
+    return data[pos:end].decode("utf-8", errors="replace"), end
+
+
+def skip_limits(data: bytes, pos: int) -> int:
+    flags, pos = read_u32_leb(data, pos)
+    _, pos = read_u32_leb(data, pos)
+    if flags & 0x01:
+        _, pos = read_u32_leb(data, pos)
+    return pos
+
+
+def imported_function_count(data: bytes) -> int:
+    pos = 8
+    while pos < len(data):
+        section_id = data[pos]
+        pos += 1
+        size, payload = read_u32_leb(data, pos)
+        end = payload + size
+        if section_id == 2:
+            count, cur = read_u32_leb(data, payload)
+            functions = 0
+            for _ in range(count):
+                _, cur = read_name(data, cur)
+                _, cur = read_name(data, cur)
+                kind = data[cur]
+                cur += 1
+                if kind == 0:  # function: type index
+                    functions += 1
+                    _, cur = read_u32_leb(data, cur)
+                elif kind == 1:  # table: ref type + limits
+                    cur += 1
+                    cur = skip_limits(data, cur)
+                elif kind == 2:  # memory: limits
+                    cur = skip_limits(data, cur)
+                elif kind == 3:  # global: value type + mutability
+                    cur += 2
+                elif kind == 4:  # tag: attribute + type index
+                    _, cur = read_u32_leb(data, cur)
+                    _, cur = read_u32_leb(data, cur)
+                else:
+                    raise ValueError(f"unknown import kind {kind}")
+            return functions
+        pos = end
+    return 0
+
+
+def function_names(data: bytes) -> dict[int, str]:
+    names: dict[int, str] = {}
+    pos = 8
+    while pos < len(data):
+        section_id = data[pos]
+        pos += 1
+        size, payload = read_u32_leb(data, pos)
+        end = payload + size
+        if section_id == 0:
+            custom_name, cur = read_name(data, payload)
+            if custom_name == "name":
+                while cur < end:
+                    subsection_id = data[cur]
+                    cur += 1
+                    subsection_size, subsection_payload = read_u32_leb(data, cur)
+                    subsection_end = subsection_payload + subsection_size
+                    if subsection_end > end:
+                        raise ValueError("name subsection exceeds custom section")
+                    if subsection_id == 1:  # function names
+                        count, p = read_u32_leb(data, subsection_payload)
+                        for _ in range(count):
+                            index, p = read_u32_leb(data, p)
+                            name, p = read_name(data, p)
+                            names[index] = name
+                    cur = subsection_end
+        pos = end
+    return names
+
+
 def locate(path: Path, offset: int) -> str:
     data = path.read_bytes()
     if len(data) < 8 or data[:4] != b"\0asm" or data[4:8] != b"\x01\0\0\0":
         raise ValueError("not a WebAssembly 1.0 binary")
     if offset < 0 or offset >= len(data):
         raise ValueError(f"offset {offset} outside file (size={len(data)})")
+
+    imports = imported_function_count(data)
+    names = function_names(data)
 
     pos = 8
     section_index = 0
@@ -89,9 +172,13 @@ def locate(path: Path, offset: int) -> str:
                         f"{body_start}+{body_size}>{payload_end}"
                     )
                 if size_pos <= offset < body_end:
+                    function_index = imports + body_index
+                    function_name = names.get(function_index, "<no-name-section-entry>")
                     return (
                         base
-                        + f" code_body_count={count} code_body_index={body_index} "
+                        + f" imported_function_count={imports} code_body_count={count} "
+                        + f"code_body_index={body_index} function_index={function_index} "
+                        + f"function_name={function_name!r} "
                         + f"body_size_field={size_pos} body_range=[{body_start},{body_end}) "
                         + f"offset_in_body={offset - body_start}"
                     )
