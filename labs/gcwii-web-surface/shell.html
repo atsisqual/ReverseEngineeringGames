@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GC/Wii WebGPU Surface Probe</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; background: #111; color: #eee; }
+    body { display: grid; place-items: center; font-family: system-ui, sans-serif; }
+    canvas { width: min(96vw, 1280px); aspect-ratio: 16 / 9; background: #000; }
+  </style>
+</head>
+<body>
+  <main>
+    <p>GXRuntime / GameCube-Wii browser WebGPU surface probe</p>
+    <canvas id="canvas" width="1280" height="720" tabindex="0"></canvas>
+  </main>
+  {{{ SCRIPT }}}
+</body>
+</html>
